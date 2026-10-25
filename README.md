@@ -32,7 +32,9 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
    the environment variables from `.env.example` (Supabase values are under
    **Project Settings → API**).
 5. Open the app and create your account. **The first person to sign up becomes
-   the Admin.** Everyone after that gets the default role (Team Member).
+   the Admin** and is approved automatically. Everyone after that gets the
+   default role (Team Member) and waits on the **Safety Team Members** page
+   until an admin approves them.
 
 ## Running locally
 

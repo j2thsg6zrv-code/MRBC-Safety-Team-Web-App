@@ -122,7 +122,7 @@ export default async function MemberPage({
                 </Select>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="active" defaultChecked={member.active} className="h-4 w-4" />
-                  Active member (inactive members can sign in but have no permissions)
+                  Approved and active (unapproved or inactive members can sign in but see nothing)
                 </label>
                 <Button type="submit">Save</Button>
               </form>

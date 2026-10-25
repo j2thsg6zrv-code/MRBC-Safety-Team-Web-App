@@ -7,6 +7,8 @@ export type CurrentUser = {
   email: string;
   fullName: string;
   roleName: string | null;
+  /** False until an admin approves the account. */
+  active: boolean;
   permissions: Permission[];
   can: (permission: Permission) => boolean;
 };
@@ -32,6 +34,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     email: profile?.email ?? user.email ?? "",
     fullName: profile?.full_name ?? "",
     roleName: role?.name ?? null,
+    active: !!profile?.active,
     permissions,
     can: (permission) => permissions.includes(permission),
   };

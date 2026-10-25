@@ -1,16 +1,42 @@
 import type { ReactNode } from "react";
 import { Nav, type NavItem } from "@/components/Nav";
+import { Card } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
+
+  if (!user.active) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+        <Card className="w-full max-w-md">
+          <h1 className="mb-2 text-xl font-semibold">Waiting for approval</h1>
+          <p className="mb-4 text-slate-700">
+            Thanks for signing up, {user.fullName || user.email}. A safety team admin needs to approve your account
+            before you can see the schedule. Check back soon.
+          </p>
+          <form action="/auth/signout" method="post">
+            <button className="text-sm text-blue-700 underline">Sign out</button>
+          </form>
+        </Card>
+      </main>
+    );
+  }
+
+  let waiting = 0;
+  if (user.can("manage_members")) {
+    const supabase = await createClient();
+    const { count } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("active", false);
+    waiting = count ?? 0;
+  }
 
   const items: NavItem[] = [
     { href: "/", label: "Dashboard" },
     { href: "/events", label: "Events" },
     ...(user.can("view_watch_list") || user.can("manage_watch_list") ? [{ href: "/watch-list", label: "Watch List" }] : []),
     { href: "/incidents", label: "Incident Reports" },
-    { href: "/members", label: "Safety Team Members" },
+    { href: "/members", label: waiting ? `Safety Team Members (${waiting} waiting)` : "Safety Team Members" },
     { href: "/buildings", label: "Buildings" },
     { href: "/positions", label: "Positions" },
     { href: "/qualifications", label: "Qualifications" },
