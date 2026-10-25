@@ -34,6 +34,29 @@ async function saveTheme(formData: FormData) {
   finish("/profile", error, "Appearance saved.");
 }
 
+async function saveMessages(formData: FormData) {
+  "use server";
+  const user = await getCurrentUser();
+  const by = String(formData.get("notify_by"));
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      notify_by: ["email", "text", "both", "none"].includes(by) ? by : "email",
+      notify_open_spots: formData.get("notify_open_spots") === "on",
+      notify_thanks: formData.get("notify_thanks") === "on",
+    })
+    .eq("id", user.id);
+  finish("/profile", error, "Message settings saved.");
+}
+
+const MESSAGE_OPTIONS = [
+  { value: "email", label: "Email" },
+  { value: "text", label: "Text" },
+  { value: "both", label: "Both" },
+  { value: "none", label: "Neither" },
+];
+
 const THEME_OPTIONS: { value: Theme; label: string; hint: string }[] = [
   { value: "system", label: "Match my device", hint: "Follows your phone or computer's setting" },
   { value: "light", label: "Light", hint: "Always light" },
@@ -85,6 +108,37 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
           <Card>
             <h2 className="mb-2 font-semibold">My qualifications</h2>
             <QualificationList items={(quals ?? []) as unknown as MemberQualification[]} />
+          </Card>
+          <Card>
+            <h2 className="mb-1 font-semibold">Messages from the team</h2>
+            <p className="mb-3 text-sm text-slate-600">
+              How the app reaches you with reminders and thank-yous. Texts go to the phone number in your contact details.
+            </p>
+            <form action={saveMessages} className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {MESSAGE_OPTIONS.map((o) => (
+                  <label
+                    key={o.value}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 p-3 text-sm font-medium has-[:checked]:border-blue-700 has-[:checked]:bg-blue-50"
+                  >
+                    <input type="radio" name="notify_by" value={o.value} defaultChecked={(profile?.notify_by ?? "email") === o.value} />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+              {profile?.notify_by !== "email" && profile?.notify_by !== "none" && !profile?.phone && (
+                <p className="text-sm text-amber-700">Add your phone number above so texts can reach you.</p>
+              )}
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="notify_open_spots" defaultChecked={profile?.notify_open_spots ?? true} className="mt-0.5" />
+                <span>Remind me 48 and 24 hours before an event that still has open spots</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="notify_thanks" defaultChecked={profile?.notify_thanks ?? true} className="mt-0.5" />
+                <span>Send me a thank-you when I sign up for a spot</span>
+              </label>
+              <Button type="submit" variant="secondary">Save message settings</Button>
+            </form>
           </Card>
           <Card>
             <h2 className="mb-3 font-semibold">Appearance</h2>

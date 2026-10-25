@@ -1,6 +1,7 @@
 import Link from "next/link";
 import QRCode from "qrcode";
 import { revalidatePath } from "next/cache";
+import { AutomaticMessages } from "@/components/AutomaticMessages";
 import { JoinInterestList } from "@/components/JoinInterestList";
 import { ShareLink } from "@/components/ShareLink";
 import { Status } from "@/components/Status";
@@ -117,6 +118,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
       <Status searchParams={searchParams} />
       <div className="space-y-6">
         <JoinInterestList />
+
+        <AutomaticMessages />
 
         <Card>
           <h2 className="mb-1 font-semibold">Reports</h2>

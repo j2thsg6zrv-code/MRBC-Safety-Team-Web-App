@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 // Open to anyone without logging in, matched exactly so nothing else slips through.
-const PUBLIC_PAGES = ["/greeters", "/join", "/api/cron/greeter-reminders"];
+const PUBLIC_PAGES = ["/greeters", "/join", "/api/notifications/send"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

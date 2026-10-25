@@ -1,6 +1,0 @@
-{
-  "crons": [
-    { "path": "/api/cron/greeter-reminders", "schedule": "0 17 * * 6" },
-    { "path": "/api/cron/greeter-reminders", "schedule": "0 18 * * 6" }
-  ]
-}
