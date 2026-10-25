@@ -3,7 +3,7 @@ import "./globals.css";
 import { getTheme } from "@/lib/theme";
 
 export const metadata: Metadata = {
-  title: "Safety Team",
+  title: { default: "MRBC Safety Team", template: "%s · MRBC Safety Team" },
   description: "Scheduling and safety information for the church safety team.",
 };
 

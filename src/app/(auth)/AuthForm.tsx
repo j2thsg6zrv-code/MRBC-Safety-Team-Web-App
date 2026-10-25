@@ -11,7 +11,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <Card className="w-full max-w-sm">
-        <h1 className="mb-1 text-xl font-semibold">Safety Team</h1>
+        <h1 className="mb-1 text-xl font-semibold">MRBC Safety Team</h1>
         <p className="mb-4 text-sm text-slate-600">
           {mode === "login" ? "Sign in to your account." : "Create your account."}
         </p>

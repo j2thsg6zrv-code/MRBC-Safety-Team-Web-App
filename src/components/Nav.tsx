@@ -15,7 +15,7 @@ export function Nav({ items, userName }: { items: NavItem[]; userName: string })
   return (
     <aside className="fixed-colors bg-slate-900 text-slate-100 md:min-h-screen md:w-60 md:shrink-0">
       <div className="flex items-center justify-between px-4 py-3 md:py-5">
-        <Link href="/" className="text-lg font-semibold">Safety Team</Link>
+        <Link href="/" className="text-lg font-semibold">MRBC Safety Team</Link>
         <button
           className="rounded-md border border-slate-700 px-3 py-1 text-sm md:hidden"
           onClick={() => setOpen(!open)}
