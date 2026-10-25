@@ -40,8 +40,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     toContact = count ?? 0;
   }
 
+  const { data: chats } = await supabase.rpc("chat_overview");
+  const unreadChats = ((chats ?? []) as { unread: number }[]).reduce((sum, c) => sum + c.unread, 0);
+
   const items: NavItem[] = [
     { href: "/", label: "Dashboard" },
+    { href: "/chat", label: unreadChats ? `Team Chat (${unreadChats} new)` : "Team Chat" },
     { href: "/events", label: "Events" },
     { href: "/greeter-schedule", label: "Greeters" },
     ...(user.can("view_watch_list") || user.can("manage_watch_list") ? [{ href: "/watch-list", label: "Watch List" }] : []),

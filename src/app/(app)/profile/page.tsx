@@ -45,6 +45,8 @@ async function saveMessages(formData: FormData) {
       notify_by: by === "none" ? "none" : "email",
       notify_open_spots: formData.get("notify_open_spots") === "on",
       notify_thanks: formData.get("notify_thanks") === "on",
+      notify_chat_direct: formData.get("notify_chat_direct") === "on",
+      notify_chat_team: formData.get("notify_chat_team") === "on",
     })
     .eq("id", user.id);
   finish("/profile", error, "Message settings saved.");
@@ -132,6 +134,17 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
                 <input type="checkbox" name="notify_thanks" defaultChecked={profile?.notify_thanks ?? true} className="mt-0.5" />
                 <span>Send me a thank-you when I sign up for a spot</span>
               </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="notify_chat_direct" defaultChecked={profile?.notify_chat_direct ?? true} className="mt-0.5" />
+                <span>Email me when a teammate sends me a message in Team Chat</span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="notify_chat_team" defaultChecked={profile?.notify_chat_team ?? false} className="mt-0.5" />
+                <span>Email me when someone posts in the whole-team chat</span>
+              </label>
+              <p className="text-xs text-slate-500">
+                Chat emails come once per conversation until you open it, so a busy chat won&apos;t fill your inbox.
+              </p>
               <Button type="submit" variant="secondary">Save message settings</Button>
             </form>
           </Card>
