@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Church Safety Team
 
-## Getting Started
+A web app for the church safety team: a dashboard calendar for signing up to
+serve, plus team members, qualifications, roles & permissions, buildings,
+positions, events, a watch list and incident reports.
 
-First, run the development server:
+Built with Next.js, Supabase (database and logins) and hosted on Vercel.
+
+## Pages
+
+| Page | Status |
+| --- | --- |
+| Sign up / sign in | Done |
+| My Profile | Done |
+| Safety Team Members | Done |
+| Qualifications | Done |
+| Roles & Permissions | Done |
+| Buildings, Positions, Events | Step 2 |
+| Dashboard calendar and sign-ups | Step 3 |
+| Watch List, Incident Reports | Step 4 |
+
+## First-time setup
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In Supabase, open **SQL Editor**, paste the contents of each file in
+   `supabase/migrations/` in order, and run it.
+3. In **Authentication → URL Configuration**, set the Site URL to the app's
+   address (for example `https://your-app.vercel.app`) and add
+   `https://your-app.vercel.app/auth/confirm` to the Redirect URLs.
+4. Import this repository at [vercel.com/new](https://vercel.com/new) and add
+   the two environment variables from `.env.example` (values are under
+   Supabase **Project Settings → API**).
+5. Open the app and create your account. **The first person to sign up becomes
+   the Admin.** Everyone after that gets the default role (Team Member).
+
+## Running locally
 
 ```bash
+cp .env.example .env.local   # then fill in the values
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
