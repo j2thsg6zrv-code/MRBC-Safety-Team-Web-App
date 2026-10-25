@@ -76,16 +76,20 @@ export default async function MemberPage({
   const supabase = await createClient();
 
   const [{ data: member }, { data: quals }, { data: roles }, { data: allQuals }] = await Promise.all([
-    supabase.from("profiles").select("*, roles(name)").eq("id", id).maybeSingle(),
+    supabase.from("profiles").select("*, roles(name, is_admin)").eq("id", id).maybeSingle(),
     supabase
       .from("member_qualifications")
       .select("id, earned_on, expires_on, qualifications(name)")
       .eq("profile_id", id)
       .order("expires_on"),
-    supabase.from("roles").select("id, name").order("name"),
+    supabase.from("roles").select("id, name, is_admin").order("name"),
     supabase.from("qualifications").select("id, name").order("name"),
   ]);
   if (!member) notFound();
+  const memberIsAdmin = !!(member.roles as { is_admin: boolean } | null)?.is_admin;
+  // Only admins can make someone an admin or change an admin's role or status.
+  const canEditRole = canManage && (user.isAdmin || !memberIsAdmin);
+  const roleChoices = (roles ?? []).filter((r) => user.isAdmin || !r.is_admin);
 
   return (
     <>
@@ -109,14 +113,14 @@ export default async function MemberPage({
               </div>
             </dl>
           </Card>
-          {canManage ? (
+          {canEditRole ? (
             <Card>
               <h2 className="mb-3 font-semibold">Role and status</h2>
               <form action={updateMembership} className="space-y-3">
                 <input type="hidden" name="id" value={id} />
                 <Select label="Role" name="role_id" defaultValue={member.role_id ?? ""}>
                   <option value="">No role</option>
-                  {(roles ?? []).map((r) => (
+                  {roleChoices.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </Select>
@@ -131,6 +135,9 @@ export default async function MemberPage({
             <Card>
               <h2 className="mb-1 font-semibold">Role</h2>
               <p>{(member.roles as { name: string } | null)?.name ?? "No role"}</p>
+              {canManage && memberIsAdmin && (
+                <p className="mt-1 text-xs text-slate-500">Only an admin can change an admin&apos;s role or status.</p>
+              )}
             </Card>
           )}
         </div>

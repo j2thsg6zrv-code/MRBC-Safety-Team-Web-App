@@ -41,7 +41,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     { href: "/buildings", label: "Buildings" },
     { href: "/positions", label: "Positions" },
     { href: "/qualifications", label: "Qualifications" },
-    ...(user.can("manage_roles") ? [{ href: "/roles", label: "Roles & Permissions" }] : []),
+    ...(user.isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
     { href: "/profile", label: "My Profile" },
   ];
 
