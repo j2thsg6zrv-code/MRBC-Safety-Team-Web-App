@@ -40,11 +40,10 @@ as $$
   );
 $$;
 
-drop policy "Role managers can change roles" on public.roles;
-create policy "Admins can change roles" on public.roles
-  for all to authenticated
+alter policy "Role managers can change roles" on public.roles
   using (public.is_admin())
   with check (public.is_admin());
+alter policy "Role managers can change roles" on public.roles rename to "Admins can change roles";
 
 -- The Admin role can't be deleted or stop being the admin role, and no other
 -- role can become one.
@@ -115,8 +114,7 @@ begin
 end;
 $$;
 
-drop trigger protect_profile_fields on public.profiles;
-create trigger protect_profile_fields
+create or replace trigger protect_profile_fields
   before update or delete on public.profiles
   for each row execute function public.protect_profile_fields();
 
