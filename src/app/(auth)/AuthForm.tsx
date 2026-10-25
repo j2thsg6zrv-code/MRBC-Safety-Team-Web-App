@@ -31,7 +31,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           )}
           <ErrorMessage message={state?.error} />
           <SuccessMessage message={state?.message} />
-          <Button type="submit" disabled={pending} className="w-full">
+          <Button
+            type="submit"
+            disabled={pending}
+            className="w-full"
+            pendingLabel={mode === "login" ? "Signing in…" : "Creating account…"}
+          >
             {mode === "login" ? "Sign in" : "Create account"}
           </Button>
         </form>

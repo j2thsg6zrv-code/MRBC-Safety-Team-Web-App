@@ -126,7 +126,7 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
               </div>
             </fieldset>
             <div className="sm:col-span-2">
-              <Button type="submit">Sign me up</Button>
+              <Button type="submit" pendingLabel="Signing you up…">Sign me up</Button>
             </div>
           </form>
         </Card>

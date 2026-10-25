@@ -1,5 +1,5 @@
 import { GreeterList } from "@/components/GreeterList";
-import { Button } from "@/components/ui";
+import { Button, SavingBar } from "@/components/ui";
 import { formatDate, formatTimeRange } from "@/lib/dates";
 import { isGreeterEvent, type GreeterSignup } from "@/lib/greeters";
 
@@ -109,6 +109,7 @@ export function DayPanel({
                                   <button className="text-xs text-red-700 underline">
                                     {s.profile_id === userId ? "Cancel" : "Remove"}
                                   </button>
+                                  <SavingBar />
                                 </form>
                               )}
                             </li>

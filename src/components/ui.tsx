@@ -64,24 +64,7 @@ export function Select({
   );
 }
 
-const buttonStyles = {
-  primary: "bg-blue-700 text-onaccent hover:brightness-90",
-  secondary: "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-  danger: "bg-red-600 text-onaccent hover:brightness-90",
-};
-
-export function Button({
-  variant = "primary",
-  className = "",
-  ...props
-}: ComponentProps<"button"> & { variant?: keyof typeof buttonStyles }) {
-  return (
-    <button
-      {...props}
-      className={`rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50 ${buttonStyles[variant]} ${className}`}
-    />
-  );
-}
+export { Button, SavingBar } from "./Button";
 
 export function ErrorMessage({ message }: { message?: string | null }) {
   if (!message) return null;
