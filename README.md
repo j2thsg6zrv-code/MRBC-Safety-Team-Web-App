@@ -15,8 +15,8 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
 | Safety Team Members | Done |
 | Qualifications | Done |
 | Roles & Permissions | Done |
-| Buildings, Positions, Events | Step 2 |
-| Dashboard calendar and sign-ups | Step 3 |
+| Buildings, Positions, Events | Done |
+| Dashboard calendar and sign-ups | Done |
 | Watch List, Incident Reports | Step 4 |
 
 ## First-time setup

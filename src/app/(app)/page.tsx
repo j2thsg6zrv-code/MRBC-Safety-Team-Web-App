@@ -135,51 +135,12 @@ export default async function DashboardPage({
         <ErrorMessage message={params.error} />
         <SuccessMessage message={params.saved} />
       </div>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
-        <div className="space-y-6">
-          <Card>
-            <Calendar month={month} selected={selected} todayDate={todayDate} days={days} />
-          </Card>
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <h2 className="mb-2 font-semibold">My upcoming shifts</h2>
-              {mySignups.length === 0 ? (
-                <p className="text-sm text-slate-600">You haven&apos;t signed up for anything yet. Pick a day on the calendar.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {mySignups.map((s) => (
-                    <li key={s.id}>
-                      <Link href={`/?month=${s.event.event_date.slice(0, 7)}&day=${s.event.event_date}`} className="hover:underline">
-                        <span className="font-medium">{formatDate(s.event.event_date, "short")}</span>
-                        {" · "}{s.position} at {s.event.title}
-                        <span className="block text-xs text-slate-500">{formatTimeRange(s.event.start_time, s.event.end_time)}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-            <Card>
-              <h2 className="mb-2 font-semibold">My qualifications</h2>
-              {expiring.length === 0 ? (
-                <p className="text-sm text-slate-600">
-                  {(myQuals ?? []).length === 0 ? "None recorded yet." : "All current."}{" "}
-                  <Link href="/profile" className="text-blue-700 underline">View profile</Link>
-                </p>
-              ) : (
-                <ul className="space-y-1 text-sm">
-                  {expiring.map((q) => (
-                    <li key={q.qualification_id}>
-                      {(q.qualifications as unknown as { name: string } | null)?.name}:{" "}
-                      <span className={q.status.className}>{q.status.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-          </div>
-        </div>
-        <div>
+      {/* On phones the selected day sits right under the calendar; on wide screens it's a side column. */}
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
+        <Card className="xl:col-start-1">
+          <Calendar month={month} selected={selected} todayDate={todayDate} days={days} />
+        </Card>
+        <div className="xl:col-start-2 xl:row-span-2 xl:row-start-1">
           {selected ? (
             <DayPanel
               date={selected}
@@ -195,6 +156,44 @@ export default async function DashboardPage({
           ) : (
             <Card><p className="text-sm text-slate-600">Pick a day on the calendar to see its events and open positions.</p></Card>
           )}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 xl:col-start-1">
+          <Card>
+            <h2 className="mb-2 font-semibold">My upcoming shifts</h2>
+            {mySignups.length === 0 ? (
+              <p className="text-sm text-slate-600">You haven&apos;t signed up for anything yet. Pick a day on the calendar.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {mySignups.map((s) => (
+                  <li key={s.id}>
+                    <Link href={`/?month=${s.event.event_date.slice(0, 7)}&day=${s.event.event_date}`} className="hover:underline">
+                      <span className="font-medium">{formatDate(s.event.event_date, "short")}</span>
+                      {" · "}{s.position} at {s.event.title}
+                      <span className="block text-xs text-slate-500">{formatTimeRange(s.event.start_time, s.event.end_time)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+          <Card>
+            <h2 className="mb-2 font-semibold">My qualifications</h2>
+            {expiring.length === 0 ? (
+              <p className="text-sm text-slate-600">
+                {(myQuals ?? []).length === 0 ? "None recorded yet." : "All current."}{" "}
+                <Link href="/profile" className="text-blue-700 underline">View profile</Link>
+              </p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {expiring.map((q) => (
+                  <li key={q.qualification_id}>
+                    {(q.qualifications as unknown as { name: string } | null)?.name}:{" "}
+                    <span className={q.status.className}>{q.status.label}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
         </div>
       </div>
     </>
