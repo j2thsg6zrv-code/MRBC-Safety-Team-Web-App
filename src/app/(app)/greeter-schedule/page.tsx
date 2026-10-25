@@ -1,9 +1,9 @@
 import QRCode from "qrcode";
 import { Status } from "@/components/Status";
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Button, Card, Field, PageHeader } from "@/components/ui";
 import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { formatDate } from "@/lib/dates";
-import { finish, type SearchParams } from "@/lib/forms";
+import { finish, text, type SearchParams } from "@/lib/forms";
 import { publicGreetersUrl, SERVICES, upcomingSundays, type GreeterSignup } from "@/lib/greeters";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,6 +22,52 @@ async function removeSignup(formData: FormData) {
   finish("/greeter-schedule", error, "Sign-up removed.");
 }
 
+type GreeterContact = { id: string; name: string; phone: string; contact_name: string | null };
+
+function contactFields(formData: FormData) {
+  return {
+    name: text(formData, "name") ?? "",
+    phone: text(formData, "phone") ?? "",
+    contact_name: text(formData, "contact_name"),
+  };
+}
+
+/** Gives a group's earlier sign-ups that have no phone the group's number. */
+async function fillGroupPhone(supabase: Awaited<ReturnType<typeof createClient>>, name: string, phone: string) {
+  await supabase.from("greeter_signups").update({ phone }).ilike("name", name).is("phone", null);
+}
+
+async function saveContact(formData: FormData) {
+  "use server";
+  await requirePermission("manage_events");
+  const supabase = await createClient();
+  const fields = contactFields(formData);
+  const id = text(formData, "id");
+  const { error } = id
+    ? await supabase.from("greeter_contacts").update(fields).eq("id", id)
+    : await supabase.from("greeter_contacts").insert(fields);
+  if (!error) await fillGroupPhone(supabase, fields.name, fields.phone);
+  finish("/greeter-schedule", error, id ? "Saved." : "Group added.");
+}
+
+async function deleteContact(formData: FormData) {
+  "use server";
+  await requirePermission("manage_events");
+  const supabase = await createClient();
+  const { error } = await supabase.from("greeter_contacts").delete().eq("id", String(formData.get("id")));
+  finish("/greeter-schedule", error, "Group removed.");
+}
+
+function ContactFields({ contact }: { contact?: GreeterContact }) {
+  return (
+    <>
+      <Field label="Group name" name="name" defaultValue={contact?.name} required hint="Exactly as they sign up, e.g. Youth Group" />
+      <Field label="Phone for reminders" name="phone" type="tel" defaultValue={contact?.phone} required />
+      <Field label="Whose number" name="contact_name" defaultValue={contact?.contact_name ?? ""} hint="e.g. Brennan Wolfe, youth leader" />
+    </>
+  );
+}
+
 export default async function GreeterSchedulePage({ searchParams }: { searchParams: SearchParams }) {
   const user = await getCurrentUser();
   const canManage = user.can("manage_events");
@@ -34,6 +80,8 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
     .order("sunday")
     .order("created_at");
   const signups = (data ?? []) as GreeterSignup[];
+  const { data: contactData } = await supabase.from("greeter_contacts").select("id, name, phone, contact_name").order("name");
+  const contacts = (contactData ?? []) as GreeterContact[];
   const allSundays = [...new Set([...sundays, ...signups.map((s) => s.sunday)])].sort();
 
   const url = publicGreetersUrl();
@@ -60,6 +108,44 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
               Sunday events with &ldquo;Greeter&rdquo; in the title show that day&apos;s greeters on the calendar too.
             </p>
           </div>
+        </Card>
+
+        <Card>
+          <h2 className="mb-1 font-semibold">Group phone numbers</h2>
+          <p className="mb-3 text-sm text-slate-600">
+            When a group signs up without a phone number, its leader&apos;s number is used so reminders reach them.
+          </p>
+          {canManage ? (
+            <div className="space-y-4">
+              {contacts.map((c) => (
+                <form key={c.id} action={saveContact} className="grid gap-3 sm:grid-cols-3">
+                  <input type="hidden" name="id" value={c.id} />
+                  <ContactFields contact={c} />
+                  <div className="flex gap-2 sm:col-span-3">
+                    <Button type="submit">Save</Button>
+                    <Button type="submit" variant="danger" formAction={deleteContact}>Remove</Button>
+                  </div>
+                </form>
+              ))}
+              <form action={saveContact} className="grid gap-3 border-t border-slate-200 pt-4 sm:grid-cols-3">
+                <ContactFields />
+                <div className="sm:col-span-3">
+                  <Button type="submit" variant="secondary">Add group</Button>
+                </div>
+              </form>
+            </div>
+          ) : contacts.length === 0 ? (
+            <p className="text-sm text-slate-500">None yet.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {contacts.map((c) => (
+                <li key={c.id}>
+                  <span className="font-medium">{c.name}</span>: {c.phone}
+                  {c.contact_name && <span className="text-slate-500"> ({c.contact_name})</span>}
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
 
         {allSundays.map((sunday) => {
