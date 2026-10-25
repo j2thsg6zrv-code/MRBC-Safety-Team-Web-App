@@ -118,9 +118,10 @@ export default async function DashboardPage({
   const events = (eventData ?? []) as unknown as DayEvent[];
   const days: Record<string, DaySummary> = {};
   for (const e of events) {
-    const day = (days[e.event_date] ??= { events: 0, open: 0, mine: false });
+    const day = (days[e.event_date] ??= { events: 0, slots: 0, open: 0, mine: false });
     day.events += 1;
     for (const ep of e.event_positions) {
+      day.slots += ep.slots;
       day.open += Math.max(0, ep.slots - ep.signups.length);
       if (ep.signups.some((s) => s.profile_id === user.id)) day.mine = true;
     }
