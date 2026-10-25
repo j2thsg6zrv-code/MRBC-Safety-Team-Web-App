@@ -1,14 +1,19 @@
 import nodemailer from "nodemailer";
 
-// Automatic messages go out by email through a Gmail account, using these
-// Vercel environment variables (Settings → Environment Variables):
-//   GMAIL_ADDRESS, GMAIL_APP_PASSWORD
+// Automatic messages go out by email through a Gmail or iCloud account, using
+// these Vercel environment variables (Settings → Environment Variables):
+//   GMAIL_ADDRESS, GMAIL_APP_PASSWORD   (the address and its app password;
+//   an @icloud.com, @me.com or @mac.com address works too)
 // Everything is email only for now (no paid texting). Texting through Twilio
 // still works if the database ever queues a text and these are added:
 //   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER (e.g. +18005551234)
 // The database decides what to send; see supabase/migrations/0013_notifications.sql.
 
-export const emailReady = () => !!(process.env.GMAIL_ADDRESS && process.env.GMAIL_APP_PASSWORD);
+const emailAddress = () => process.env.GMAIL_ADDRESS?.trim() ?? "";
+// App passwords are often copied with spaces ("abcd efgh ijkl mnop").
+const emailPassword = () => process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "") ?? "";
+
+export const emailReady = () => !!(emailAddress() && emailPassword());
 export const textReady = () =>
   !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER);
 
@@ -35,12 +40,12 @@ export function toE164(phone: string): string | null {
 let mailer: nodemailer.Transporter | null = null;
 
 export async function sendEmail(to: string, subject: string, body: string) {
-  mailer ??= nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: process.env.GMAIL_ADDRESS, pass: process.env.GMAIL_APP_PASSWORD },
-  });
+  const auth = { user: emailAddress(), pass: emailPassword() };
+  mailer ??= /@(icloud|me|mac)\.com$/i.test(auth.user)
+    ? nodemailer.createTransport({ host: "smtp.mail.me.com", port: 587, requireTLS: true, auth })
+    : nodemailer.createTransport({ service: "gmail", auth });
   await mailer.sendMail({
-    from: { name: "MRBC Safety Team", address: process.env.GMAIL_ADDRESS! },
+    from: { name: "MRBC Safety Team", address: auth.user },
     to,
     subject,
     text: body,
