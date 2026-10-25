@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { GreeterList } from "@/components/GreeterList";
 import { EventForm, readEventForm, type EventFormValues } from "@/components/EventForm";
 import { Status } from "@/components/Status";
 import { Button, Card, PageHeader } from "@/components/ui";
@@ -7,6 +8,7 @@ import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { formatDate, formatTimeRange } from "@/lib/dates";
 import { syncEventPositions } from "@/lib/events";
 import { finish, type SearchParams } from "@/lib/forms";
+import { isGreeterEvent, type GreeterSignup } from "@/lib/greeters";
 import { createClient } from "@/lib/supabase/server";
 
 type EventDetail = EventFormValues & {
@@ -79,6 +81,16 @@ export default async function EventPage({
   const event = data as unknown as EventDetail;
   event.positions = Object.fromEntries(event.event_positions.map((p) => [p.position_id, p.slots]));
 
+  let greeters: GreeterSignup[] | null = null;
+  if (isGreeterEvent(event)) {
+    const { data: greeterData } = await supabase
+      .from("greeter_signups")
+      .select("id, sunday, name, phone, first_service, second_service")
+      .eq("sunday", event.event_date)
+      .order("created_at");
+    greeters = (greeterData ?? []) as GreeterSignup[];
+  }
+
   return (
     <>
       <Link href="/events" className="mb-2 inline-block text-sm text-blue-700 underline">← All events</Link>
@@ -88,6 +100,11 @@ export default async function EventPage({
         {event.buildings && ` · ${event.buildings.name}`}
       </p>
       <Status searchParams={searchParams} />
+      {greeters && (
+        <Card className="mb-6 p-0">
+          <GreeterList signups={greeters} />
+        </Card>
+      )}
       {user.can("manage_events") ? (
         <div className="space-y-6">
           <Card>

@@ -1,5 +1,7 @@
+import { GreeterList } from "@/components/GreeterList";
 import { Button } from "@/components/ui";
 import { formatDate, formatTimeRange } from "@/lib/dates";
+import { isGreeterEvent, type GreeterSignup } from "@/lib/greeters";
 
 export type DayEvent = {
   id: string;
@@ -31,6 +33,7 @@ export function DayPanel({
   canManage,
   myQualifications,
   members,
+  greeters,
   actions,
   returnTo,
 }: {
@@ -41,6 +44,8 @@ export function DayPanel({
   canManage: boolean;
   myQualifications: Set<string>;
   members: { id: string; name: string }[];
+  /** This day's public greeter sign-ups, shown on greeter events. */
+  greeters: GreeterSignup[];
   actions: Actions;
   returnTo: string;
 }) {
@@ -124,7 +129,12 @@ export function DayPanel({
                     </li>
                   );
                 })}
-                {event.event_positions.length === 0 && (
+                {isGreeterEvent(event) && (
+                  <li>
+                    <GreeterList signups={greeters} />
+                  </li>
+                )}
+                {event.event_positions.length === 0 && !isGreeterEvent(event) && (
                   <li className="px-4 py-3 text-sm text-slate-500">No positions set up for this event.</li>
                 )}
               </ul>

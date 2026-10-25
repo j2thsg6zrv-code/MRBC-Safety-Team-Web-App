@@ -6,6 +6,7 @@ import { expiryStatus } from "@/components/QualificationList";
 import { Card, ErrorMessage, SuccessMessage } from "@/components/ui";
 import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { formatDate, formatTimeRange, today } from "@/lib/dates";
+import type { GreeterSignup } from "@/lib/greeters";
 import { createClient } from "@/lib/supabase/server";
 import { WatchListCard } from "@/components/WatchListCard";
 import { photoUrls, type WatchListEntry } from "@/lib/watchList";
@@ -96,13 +97,20 @@ export default async function DashboardPage({
   ]);
 
   const seesWatchList = user.can("view_watch_list") || user.can("manage_watch_list");
-  const [{ data: watchData }, { count: openIncidents }] = await Promise.all([
+  const [{ data: watchData }, { count: openIncidents }, { data: greeterData }] = await Promise.all([
     seesWatchList
       ? supabase.from("watch_list").select("*").eq("archived", false).order("status").order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as WatchListEntry[] }),
     user.can("view_incidents") || user.can("manage_incidents")
       ? supabase.from("incident_reports").select("id", { count: "exact", head: true }).eq("status", "open")
       : Promise.resolve({ count: null }),
+    selected
+      ? supabase
+          .from("greeter_signups")
+          .select("id, sunday, name, phone, first_service, second_service")
+          .eq("sunday", selected)
+          .order("created_at")
+      : Promise.resolve({ data: [] as GreeterSignup[] }),
   ]);
   const watchList = (watchData ?? []) as WatchListEntry[];
   const watchPhotos = await photoUrls(supabase, watchList.slice(0, 4).map((w) => w.photo_path));
@@ -169,6 +177,7 @@ export default async function DashboardPage({
               canManage={user.can("manage_events")}
               myQualifications={currentQuals}
               members={(members ?? []).map((m) => ({ id: m.id, name: m.full_name || m.email }))}
+              greeters={(greeterData ?? []) as GreeterSignup[]}
               actions={{ signUp, cancel, assign }}
               returnTo={returnTo}
             />

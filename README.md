@@ -19,6 +19,7 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
 | Dashboard calendar and sign-ups | Done |
 | Watch List, Incident Reports | Done |
 | Light / dark mode (My Profile) | Done |
+| Greeters: public sign-up at `/greeters` (no login) and the team's list with phone numbers | Done |
 
 ## First-time setup
 

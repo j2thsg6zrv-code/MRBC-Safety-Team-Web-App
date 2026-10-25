@@ -34,6 +34,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const items: NavItem[] = [
     { href: "/", label: "Dashboard" },
     { href: "/events", label: "Events" },
+    { href: "/greeter-schedule", label: "Greeters" },
     ...(user.can("view_watch_list") || user.can("manage_watch_list") ? [{ href: "/watch-list", label: "Watch List" }] : []),
     { href: "/incidents", label: "Incident Reports" },
     { href: "/members", label: waiting ? `Safety Team Members (${waiting} waiting)` : "Safety Team Members" },

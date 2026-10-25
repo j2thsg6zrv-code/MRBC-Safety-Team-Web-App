@@ -3,6 +3,8 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
+// Open to anyone without logging in, matched exactly so nothing else slips through.
+const PUBLIC_PAGES = ["/greeters"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -30,7 +32,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isPublic = PUBLIC_PATHS.some((p) => request.nextUrl.pathname.startsWith(p));
+  const { pathname } = request.nextUrl;
+  const isPublic =
+    PUBLIC_PAGES.includes(pathname.replace(/\/$/, "")) || PUBLIC_PATHS.some((p) => pathname.startsWith(p));
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
