@@ -3,6 +3,7 @@ import { Status } from "@/components/Status";
 import { Card, PageHeader } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { formatDate, formatTimeRange, today } from "@/lib/dates";
+import { repeatBadge, type RepeatRule } from "@/lib/repeat";
 import { createClient } from "@/lib/supabase/server";
 
 type EventRow = {
@@ -11,7 +12,7 @@ type EventRow = {
   event_date: string;
   start_time: string;
   end_time: string | null;
-  series_id: string | null;
+  repeat_rule: RepeatRule | null;
   buildings: { name: string } | null;
   event_positions: { slots: number }[];
 };
@@ -27,7 +28,7 @@ export default async function EventsPage({
 
   let query = supabase
     .from("events")
-    .select("id, title, event_date, start_time, end_time, series_id, buildings(name), event_positions(slots)");
+    .select("id, title, event_date, start_time, end_time, repeat_rule, buildings(name), event_positions(slots)");
   query = past
     ? query.lt("event_date", today()).order("event_date", { ascending: false }).limit(100)
     : query.gte("event_date", today()).order("event_date").order("start_time").limit(200);
@@ -63,7 +64,9 @@ export default async function EventsPage({
                   <div>
                     <p className="font-medium">
                       {e.title}
-                      {e.series_id && <span className="ml-2 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">Weekly</span>}
+                      {e.repeat_rule && (
+                        <span className="ml-2 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{repeatBadge(e.repeat_rule)}</span>
+                      )}
                     </p>
                     <p className="text-sm text-slate-500">
                       {formatDate(e.event_date)} · {formatTimeRange(e.start_time, e.end_time)}

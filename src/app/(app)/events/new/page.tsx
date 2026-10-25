@@ -4,9 +4,9 @@ import { EventForm, readEventForm } from "@/components/EventForm";
 import { Status } from "@/components/Status";
 import { Card, PageHeader } from "@/components/ui";
 import { requirePermission } from "@/lib/auth";
-import { addDays } from "@/lib/dates";
-import { syncEventPositions } from "@/lib/events";
+import { repeatError, syncEventPositions } from "@/lib/events";
 import { finish, type SearchParams } from "@/lib/forms";
+import { repeatDates } from "@/lib/repeat";
 import { createClient } from "@/lib/supabase/server";
 
 async function createEvent(formData: FormData) {
@@ -14,16 +14,18 @@ async function createEvent(formData: FormData) {
   const user = await requirePermission("manage_events");
   const supabase = await createClient();
   const { data: allPositions } = await supabase.from("positions").select("id");
-  const { fields, eventDate, positions } = readEventForm(formData, (allPositions ?? []).map((p) => p.id));
+  const { fields, eventDate, positions, repeatRule, repeatUntil } = readEventForm(
+    formData,
+    (allPositions ?? []).map((p) => p.id),
+  );
+  const invalid = repeatError(eventDate, repeatRule, repeatUntil);
+  if (invalid) finish("/events/new", { message: invalid });
 
-  const repeatWeeks = Math.min(52, Math.max(0, Number(formData.get("repeat_weeks")) || 0));
-  const seriesId = repeatWeeks > 0 ? crypto.randomUUID() : null;
-  const rows = Array.from({ length: repeatWeeks + 1 }, (_, week) => ({
-    ...fields,
-    event_date: addDays(eventDate, week * 7),
-    series_id: seriesId,
-    created_by: user.id,
-  }));
+  const dates = repeatRule && repeatUntil ? repeatDates(eventDate, repeatRule, repeatUntil) : [eventDate];
+  const repeat = repeatRule
+    ? { series_id: crypto.randomUUID(), repeat_rule: repeatRule, repeat_until: repeatUntil }
+    : { series_id: null, repeat_rule: null, repeat_until: null };
+  const rows = dates.map((date) => ({ ...fields, ...repeat, event_date: date, created_by: user.id }));
 
   const { data: created, error } = await supabase.from("events").insert(rows).select("id");
   if (error || !created) finish("/events/new", error);

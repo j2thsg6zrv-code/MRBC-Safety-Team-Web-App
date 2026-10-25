@@ -6,9 +6,10 @@ import { Status } from "@/components/Status";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { formatDate, formatTimeRange } from "@/lib/dates";
-import { syncEventPositions } from "@/lib/events";
+import { applyRepeat, repeatError, syncEventPositions } from "@/lib/events";
 import { finish, type SearchParams } from "@/lib/forms";
 import { isGreeterEvent, type GreeterSignup } from "@/lib/greeters";
+import { describeRepeat } from "@/lib/repeat";
 import { createClient } from "@/lib/supabase/server";
 
 type EventDetail = EventFormValues & {
@@ -33,19 +34,43 @@ async function targetEventIds(formData: FormData) {
 
 async function updateEvent(formData: FormData) {
   "use server";
-  await requirePermission("manage_events");
+  const user = await requirePermission("manage_events");
   const supabase = await createClient();
   const { data: allPositions } = await supabase.from("positions").select("id");
-  const { fields, eventDate, positions } = readEventForm(formData, (allPositions ?? []).map((p) => p.id));
-  const { id, ids } = await targetEventIds(formData);
+  const { fields, eventDate, positions, repeatRule, repeatUntil } = readEventForm(
+    formData,
+    (allPositions ?? []).map((p) => p.id),
+  );
+  const invalid = repeatError(eventDate, repeatRule, repeatUntil);
+  const id = String(formData.get("id"));
+  if (invalid) finish(`/events/${id}`, { message: invalid });
 
+  const { data: before } = await supabase
+    .from("events")
+    .select("event_date, repeat_rule, repeat_until")
+    .eq("id", id)
+    .single();
+  const repeatChanged =
+    before?.repeat_rule !== repeatRule ||
+    (repeatRule !== null && before?.repeat_until !== repeatUntil) ||
+    (repeatRule !== null && before?.event_date !== eventDate);
+
+  const { ids } = await targetEventIds(formData);
   const { error } = await supabase.from("events").update(fields).in("id", ids);
   if (error) finish(`/events/${id}`, error);
   const { error: dateError } = await supabase.from("events").update({ event_date: eventDate }).eq("id", id);
   if (dateError) finish(`/events/${id}`, dateError);
-
   const positionError = await syncEventPositions(supabase, ids, positions);
-  finish(`/events/${id}`, positionError, ids.length > 1 ? `Saved ${ids.length} events.` : "Saved.");
+  if (positionError) finish(`/events/${id}`, positionError);
+
+  if (!repeatChanged) finish(`/events/${id}`, null, ids.length > 1 ? `Saved ${ids.length} events.` : "Saved.");
+
+  const result = await applyRepeat(supabase, id, repeatRule, repeatUntil, user.id);
+  const changes = [
+    result.added ? `added ${result.added} date${result.added === 1 ? "" : "s"}` : null,
+    result.removed ? `removed ${result.removed} date${result.removed === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
+  finish(`/events/${id}`, result.error, changes.length ? `Saved and ${changes.join(" and ")}.` : "Saved.");
 }
 
 async function deleteEvent(formData: FormData) {
@@ -99,6 +124,9 @@ export default async function EventPage({
         {formatDate(event.event_date)} · {formatTimeRange(event.start_time, event.end_time)}
         {event.buildings && ` · ${event.buildings.name}`}
       </p>
+      {event.repeat_rule && (
+        <p className="-mt-3 mb-4 text-sm text-slate-500">{describeRepeat(event.repeat_rule, event.event_date, event.repeat_until)}</p>
+      )}
       <Status searchParams={searchParams} />
       {greeters && (
         <Card className="mb-6 p-0">

@@ -1,4 +1,5 @@
 import { Button, Field, Select, TextArea } from "@/components/ui";
+import { parseRepeatRule, REPEAT_RULES, type RepeatRule } from "@/lib/repeat";
 
 type Option = { id: string; name: string };
 
@@ -10,6 +11,8 @@ export type EventFormValues = {
   end_time: string | null;
   building_id: string | null;
   series_id: string | null;
+  repeat_rule: RepeatRule | null;
+  repeat_until: string | null;
   positions: Record<string, number>; // position id → slots
 };
 
@@ -72,20 +75,31 @@ export function EventForm({
         </div>
       </fieldset>
 
-      {!event && (
-        <Field
-          label="Repeat weekly for how many more weeks?"
-          name="repeat_weeks"
-          type="number"
-          min={0}
-          max={52}
-          defaultValue={0}
-          hint="0 = just this one date. For example, 12 adds this event every week for the next 12 weeks too."
-        />
-      )}
+      <fieldset className="rounded-md border border-slate-200 p-3">
+        <legend className="px-1 text-sm font-medium text-slate-700">Repeat</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Select label="How often" name="repeat_rule" defaultValue={event?.repeat_rule ?? ""}>
+            <option value="">Does not repeat</option>
+            {Object.entries(REPEAT_RULES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </Select>
+          <Field
+            label="Repeat until"
+            name="repeat_until"
+            type="date"
+            defaultValue={event?.repeat_until ?? ""}
+            hint="The last date it can happen. Needed when the event repeats."
+          />
+        </div>
+        {event?.series_id && (
+          <p className="mt-2 text-xs text-slate-500">
+            Changing how often or the end date updates this date and every date after it. Dates that no longer fit
+            are removed, along with anyone signed up for them.
+          </p>
+        )}
+      </fieldset>
       {event?.series_id && (
         <fieldset className="space-y-1 text-sm">
-          <legend className="mb-1 font-medium text-slate-700">This event repeats weekly. Apply changes to:</legend>
+          <legend className="mb-1 font-medium text-slate-700">Apply other changes to:</legend>
           <label className="flex items-center gap-2">
             <input type="radio" name="scope" value="one" defaultChecked /> Only this date
           </label>
@@ -121,6 +135,8 @@ export function readEventForm(formData: FormData, positionIds: string[]) {
       building_id: value("building_id"),
     },
     eventDate: value("event_date") ?? "",
+    repeatRule: parseRepeatRule(value("repeat_rule")),
+    repeatUntil: value("repeat_until"),
     positions,
   };
 }
