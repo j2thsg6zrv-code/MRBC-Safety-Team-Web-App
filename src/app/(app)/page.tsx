@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Calendar, monthRange, type DaySummary } from "@/components/Calendar";
 import { DayPanel, type DayEvent } from "@/components/DayPanel";
 import { expiryStatus } from "@/components/QualificationList";
+import { Logo } from "@/components/Logo";
 import { Card, ErrorMessage, SuccessMessage } from "@/components/ui";
 import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { formatDate, formatTimeRange, today } from "@/lib/dates";
@@ -147,13 +148,30 @@ export default async function DashboardPage({
     .sort((a, b) => (a.event.event_date + a.event.start_time).localeCompare(b.event.event_date + b.event.start_time))
     .slice(0, 6);
 
+  const nextShift = mySignups[0];
+
   const returnTo = `/?month=${month}${selected ? `&day=${selected}` : ""}`;
 
   return (
     <>
-      <h1 className="mb-4 text-2xl font-semibold">
-        Welcome{user.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
-      </h1>
+      {/* Welcome banner. Stays navy in light and dark mode. */}
+      <div className="fixed-colors relative mb-4 flex items-center gap-4 overflow-hidden rounded-xl bg-linear-to-r from-slate-900 to-blue-900 px-4 py-4 text-white md:px-6 md:py-5">
+        <Logo className="pointer-events-none absolute -top-12 -right-8 h-60 opacity-10" />
+        <Logo className="h-12 md:h-16" />
+        <div className="relative">
+          <h1 className="text-2xl font-semibold">
+            Welcome{user.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
+          </h1>
+          <p className="mt-1 text-sm text-slate-300">
+            MRBC Safety Team ·{" "}
+            {nextShift
+              ? `Next up: ${nextShift.position ?? "serving"} at ${nextShift.event.title}, ${
+                  nextShift.event.event_date === todayDate ? "today" : formatDate(nextShift.event.event_date, "short")
+                }`
+              : "Pick a day below to sign up to serve"}
+          </p>
+        </div>
+      </div>
       {!!openIncidents && (
         <Link href="/incidents?status=open" className="mb-4 block rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800 hover:underline">
           {openIncidents} open incident {openIncidents === 1 ? "report needs" : "reports need"} follow-up →

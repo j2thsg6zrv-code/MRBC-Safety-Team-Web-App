@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { login, signup } from "./actions";
+import { Logo } from "@/components/Logo";
 import { Button, Card, ErrorMessage, Field, SuccessMessage } from "@/components/ui";
 
 export function AuthForm({ mode, email }: { mode: "login" | "signup"; email?: string }) {
@@ -11,6 +12,7 @@ export function AuthForm({ mode, email }: { mode: "login" | "signup"; email?: st
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <Card className="w-full max-w-sm">
+        <Logo className="mb-3 h-12 text-slate-900" />
         <h1 className="mb-1 text-xl font-semibold">MRBC Safety Team</h1>
         <p className="mb-4 text-sm text-slate-600">
           {mode === "login" ? "Sign in to your account." : "Create your account."}
