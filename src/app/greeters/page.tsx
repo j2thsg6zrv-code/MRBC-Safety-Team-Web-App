@@ -24,7 +24,7 @@ async function signUp(formData: FormData) {
   const { error } = await supabase.rpc("greeter_sign_up", {
     p_sunday: sunday,
     p_name: text(formData, "name"),
-    p_phone: text(formData, "phone"),
+    p_email: text(formData, "email"),
     p_first_service: formData.get("first_service") === "on",
     p_second_service: formData.get("second_service") === "on",
   });
@@ -54,7 +54,7 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
           <h1 className="text-2xl font-semibold">Sunday Greeters</h1>
           <p className="mt-1 text-slate-700">
             Help welcome everyone on Sunday morning. Pick a Sunday, choose the 8:30 service, the 11:00 service or
-            both. Leave your phone number if you&apos;d like a reminder.
+            both. Leave your email if you&apos;d like a reminder.
           </p>
         </header>
 
@@ -95,11 +95,12 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
           <form action={signUp} className="grid gap-3 sm:grid-cols-2">
             <Field label="Your name" name="name" autoComplete="name" required minLength={2} maxLength={80} />
             <Field
-              label="Phone number (optional)"
-              name="phone"
-              type="tel"
-              autoComplete="tel"
-              hint="For a reminder. Only the safety team sees it."
+              label="Email (optional)"
+              name="email"
+              type="email"
+              autoComplete="email"
+              maxLength={200}
+              hint="For a thank-you and a reminder the Saturday before. Only the safety team sees it."
             />
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-sm font-medium text-slate-700">Sunday</span>

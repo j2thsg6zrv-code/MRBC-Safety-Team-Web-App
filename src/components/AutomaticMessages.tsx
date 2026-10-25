@@ -1,16 +1,15 @@
 import { Button, Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { finish } from "@/lib/forms";
-import { emailReady, textReady, type OutboxMessage } from "@/lib/notifications";
+import { emailReady, type OutboxMessage } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
-async function sendTest(formData: FormData) {
+async function sendTest() {
   "use server";
   await requireAdmin();
-  const channel = formData.get("channel") === "text" ? "text" : "email";
   const supabase = await createClient();
-  const { error } = await supabase.rpc("send_test_message", { p_channel: channel });
-  finish("/admin", error, `Test ${channel === "text" ? "text" : "email"} queued. It should arrive within a minute.`);
+  const { error } = await supabase.rpc("send_test_message", { p_channel: "email" });
+  finish("/admin", error, "Test email queued. It should arrive within a minute.");
 }
 
 const KINDS: Record<string, string> = {
@@ -39,32 +38,26 @@ export async function AutomaticMessages() {
     .order("created_at", { ascending: false })
     .limit(25);
   const messages = (data ?? []) as OutboxMessage[];
-  const ready = { email: emailReady(), text: textReady() };
+  const ready = emailReady();
 
   return (
     <Card>
       <h2 className="mb-1 font-semibold">Automatic messages</h2>
       <p className="mb-3 text-sm text-slate-600">
         The app thanks people when they sign up for a spot or to greet, reminds the team 48 and 24 hours before an
-        event that still has open spots, and texts Sunday&apos;s greeters on Saturday at noon. Members choose email,
-        text, or neither on My Profile.
+        event that still has open spots, and emails Sunday&apos;s greeters on Saturday at noon. Everything goes by
+        email. Members can turn messages off on My Profile.
       </p>
-      <ul className="mb-3 space-y-1 text-sm">
-        {(["email", "text"] as const).map((channel) => (
-          <li key={channel} className="flex flex-wrap items-center gap-2">
-            <span className={ready[channel] ? "text-green-700" : "text-amber-700"}>
-              {ready[channel] ? "✓" : "○"} {channel === "email" ? "Email" : "Texting"}{" "}
-              {ready[channel] ? "is set up" : "isn't set up yet"}
-            </span>
-            {ready[channel] && (
-              <form action={sendTest}>
-                <input type="hidden" name="channel" value={channel} />
-                <Button type="submit" variant="secondary">Send me a test {channel}</Button>
-              </form>
-            )}
-          </li>
-        ))}
-      </ul>
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+        <span className={ready ? "text-green-700" : "text-amber-700"}>
+          {ready ? "✓ Email is set up" : "○ Email isn't set up yet"}
+        </span>
+        {ready && (
+          <form action={sendTest}>
+            <Button type="submit" variant="secondary">Send me a test email</Button>
+          </form>
+        )}
+      </div>
       {messages.length > 0 && (
         <details>
           <summary className="cursor-pointer text-sm font-medium">Recent messages</summary>

@@ -110,7 +110,7 @@ export default async function EventPage({
   if (isGreeterEvent(event)) {
     const { data: greeterData } = await supabase
       .from("greeter_signups")
-      .select("id, sunday, name, phone, first_service, second_service")
+      .select("id, sunday, name, email, phone, first_service, second_service")
       .eq("sunday", event.event_date)
       .order("created_at");
     greeters = (greeterData ?? []) as GreeterSignup[];

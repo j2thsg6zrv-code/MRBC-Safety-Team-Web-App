@@ -22,19 +22,14 @@ async function removeSignup(formData: FormData) {
   finish("/greeter-schedule", error, "Sign-up removed.");
 }
 
-type GreeterContact = { id: string; name: string; phone: string; contact_name: string | null };
+type GreeterContact = { id: string; name: string; email: string | null; phone: string | null; contact_name: string | null };
 
 function contactFields(formData: FormData) {
   return {
     name: text(formData, "name") ?? "",
-    phone: text(formData, "phone") ?? "",
+    email: text(formData, "email"),
     contact_name: text(formData, "contact_name"),
   };
-}
-
-/** Gives a group's earlier sign-ups that have no phone the group's number. */
-async function fillGroupPhone(supabase: Awaited<ReturnType<typeof createClient>>, name: string, phone: string) {
-  await supabase.from("greeter_signups").update({ phone }).ilike("name", name).is("phone", null);
 }
 
 async function saveContact(formData: FormData) {
@@ -46,7 +41,6 @@ async function saveContact(formData: FormData) {
   const { error } = id
     ? await supabase.from("greeter_contacts").update(fields).eq("id", id)
     : await supabase.from("greeter_contacts").insert(fields);
-  if (!error) await fillGroupPhone(supabase, fields.name, fields.phone);
   finish("/greeter-schedule", error, id ? "Saved." : "Group added.");
 }
 
@@ -62,8 +56,8 @@ function ContactFields({ contact }: { contact?: GreeterContact }) {
   return (
     <>
       <Field label="Group name" name="name" defaultValue={contact?.name} required hint="Exactly as they sign up, e.g. Youth Group" />
-      <Field label="Phone for reminders" name="phone" type="tel" defaultValue={contact?.phone} required />
-      <Field label="Whose number" name="contact_name" defaultValue={contact?.contact_name ?? ""} hint="e.g. Brennan Wolfe, youth leader" />
+      <Field label="Email for reminders" name="email" type="email" defaultValue={contact?.email ?? ""} required />
+      <Field label="Whose email" name="contact_name" defaultValue={contact?.contact_name ?? ""} hint="e.g. Brennan Wolfe, youth leader" />
     </>
   );
 }
@@ -75,12 +69,12 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
   const supabase = await createClient();
   const { data } = await supabase
     .from("greeter_signups")
-    .select("id, sunday, name, phone, first_service, second_service")
+    .select("id, sunday, name, email, phone, first_service, second_service")
     .gte("sunday", sundays[0])
     .order("sunday")
     .order("created_at");
   const signups = (data ?? []) as GreeterSignup[];
-  const { data: contactData } = await supabase.from("greeter_contacts").select("id, name, phone, contact_name").order("name");
+  const { data: contactData } = await supabase.from("greeter_contacts").select("id, name, email, phone, contact_name").order("name");
   const contacts = (contactData ?? []) as GreeterContact[];
   const allSundays = [...new Set([...sundays, ...signups.map((s) => s.sunday)])].sort();
 
@@ -100,7 +94,7 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
           <div className="min-w-0 space-y-1 text-sm">
             <p className="font-medium">Public sign-up page</p>
             <p className="text-slate-600">
-              Anyone can sign up here without logging in. They see first names only, never phone numbers, and
+              Anyone can sign up here without logging in. They see first names only, never contact details, and
               can&apos;t open any other page.
             </p>
             <a href={url} className="break-all text-blue-700 underline">{url}</a>
@@ -111,9 +105,9 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
         </Card>
 
         <Card>
-          <h2 className="mb-1 font-semibold">Group phone numbers</h2>
+          <h2 className="mb-1 font-semibold">Group emails</h2>
           <p className="mb-3 text-sm text-slate-600">
-            When a group signs up without a phone number, its leader&apos;s number is used so reminders reach them.
+            When a group signs up without an email, its thank-you and reminder go to its leader&apos;s email.
           </p>
           {canManage ? (
             <div className="space-y-4">
@@ -140,7 +134,7 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
             <ul className="space-y-1 text-sm">
               {contacts.map((c) => (
                 <li key={c.id}>
-                  <span className="font-medium">{c.name}</span>: {c.phone}
+                  <span className="font-medium">{c.name}</span>: {c.email ?? c.phone}
                   {c.contact_name && <span className="text-slate-500"> ({c.contact_name})</span>}
                 </li>
               ))}
@@ -166,13 +160,15 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
                           {people.map((p) => (
                             <li key={p.id} className="flex flex-wrap items-center gap-x-3">
                               <span>{p.name}</span>
-                              {p.phone ? (
+                              {p.email ? (
+                                <a href={`mailto:${p.email}`} className="text-blue-700 underline">{p.email}</a>
+                              ) : p.phone ? (
                                 <>
                                   <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a>
                                   <a href={`sms:${p.phone}`} className="text-blue-700 underline">Text</a>
                                 </>
                               ) : (
-                                <span className="text-slate-500">No phone</span>
+                                <span className="text-slate-500">No email</span>
                               )}
                               {canManage && (
                                 <form action={removeSignup}>

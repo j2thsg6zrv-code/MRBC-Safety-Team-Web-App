@@ -107,7 +107,7 @@ export default async function DashboardPage({
     selected
       ? supabase
           .from("greeter_signups")
-          .select("id, sunday, name, phone, first_service, second_service")
+          .select("id, sunday, name, email, phone, first_service, second_service")
           .eq("sunday", selected)
           .order("created_at")
       : Promise.resolve({ data: [] as GreeterSignup[] }),

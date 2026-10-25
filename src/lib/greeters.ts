@@ -30,6 +30,8 @@ export type GreeterSignup = {
   id: string;
   sunday: string;
   name: string;
+  email: string | null;
+  /** Sign-ups from before greeters gave an email address. */
   phone: string | null;
   first_service: boolean;
   second_service: boolean;

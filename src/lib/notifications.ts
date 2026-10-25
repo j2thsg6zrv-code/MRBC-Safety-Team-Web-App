@@ -1,9 +1,10 @@
 import nodemailer from "nodemailer";
 
-// Automatic messages go out by email through a Gmail account and by text
-// through Twilio. Each turns on once its keys are added in Vercel
-// (Settings → Environment Variables) and the site is redeployed:
+// Automatic messages go out by email through a Gmail account, using these
+// Vercel environment variables (Settings → Environment Variables):
 //   GMAIL_ADDRESS, GMAIL_APP_PASSWORD
+// Everything is email only for now (no paid texting). Texting through Twilio
+// still works if the database ever queues a text and these are added:
 //   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER (e.g. +18005551234)
 // The database decides what to send; see supabase/migrations/0013_notifications.sql.
 

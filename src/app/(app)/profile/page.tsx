@@ -42,7 +42,7 @@ async function saveMessages(formData: FormData) {
   const { error } = await supabase
     .from("profiles")
     .update({
-      notify_by: ["email", "text", "both", "none"].includes(by) ? by : "email",
+      notify_by: by === "none" ? "none" : "email",
       notify_open_spots: formData.get("notify_open_spots") === "on",
       notify_thanks: formData.get("notify_thanks") === "on",
     })
@@ -51,10 +51,8 @@ async function saveMessages(formData: FormData) {
 }
 
 const MESSAGE_OPTIONS = [
-  { value: "email", label: "Email" },
-  { value: "text", label: "Text" },
-  { value: "both", label: "Both" },
-  { value: "none", label: "Neither" },
+  { value: "email", label: "Email me" },
+  { value: "none", label: "Don't send me anything" },
 ];
 
 const THEME_OPTIONS: { value: Theme; label: string; hint: string }[] = [
@@ -112,10 +110,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
           <Card>
             <h2 className="mb-1 font-semibold">Messages from the team</h2>
             <p className="mb-3 text-sm text-slate-600">
-              How the app reaches you with reminders and thank-yous. Texts go to the phone number in your contact details.
+              Reminders and thank-yous come by email to the address on your account.
             </p>
             <form action={saveMessages} className="space-y-3">
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {MESSAGE_OPTIONS.map((o) => (
                   <label
                     key={o.value}
@@ -126,9 +124,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
                   </label>
                 ))}
               </div>
-              {profile?.notify_by !== "email" && profile?.notify_by !== "none" && !profile?.phone && (
-                <p className="text-sm text-amber-700">Add your phone number above so texts can reach you.</p>
-              )}
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" name="notify_open_spots" defaultChecked={profile?.notify_open_spots ?? true} className="mt-0.5" />
                 <span>Remind me 48 and 24 hours before an event that still has open spots</span>

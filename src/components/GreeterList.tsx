@@ -5,7 +5,7 @@ import { SERVICES, type GreeterSignup } from "@/lib/greeters";
 
 const TIMES = { first_service: "8:30", second_service: "11:00" } as const;
 
-/** A Sunday's greeters from the public sign-up page, with phone numbers. */
+/** A Sunday's greeters from the public sign-up page, with their contact details. */
 export function GreeterList({ signups }: { signups: GreeterSignup[] }) {
   return (
     <div className="px-4 py-3">
@@ -16,8 +16,10 @@ export function GreeterList({ signups }: { signups: GreeterSignup[] }) {
       <div className="grid gap-3 sm:grid-cols-2">
         {SERVICES.map((service) => {
           const people = signups.filter((s) => s[service.key]);
-          const phones = people.flatMap((p) => (p.phone ? [p.phone] : []));
-          const noPhone = people.length - phones.length;
+          const emails = people.flatMap((p) => (p.email ? [p.email] : []));
+          // Sign-ups from before greeters gave an email still have a phone number.
+          const phones = people.flatMap((p) => (!p.email && p.phone ? [p.phone] : []));
+          const unreachable = people.length - emails.length - phones.length;
           const message = people[0]
             ? `Hi! This is a reminder that you're signed up to greet before the ${TIMES[service.key]} service on ${formatDate(people[0].sunday)}. Thank you for serving! - MRBC Safety Team`
             : "";
@@ -31,17 +33,27 @@ export function GreeterList({ signups }: { signups: GreeterSignup[] }) {
                   {people.map((p) => (
                     <li key={p.id}>
                       {p.name}
-                      {p.phone && (
+                      {p.email ? (
+                        <> · <a href={`mailto:${p.email}`} className="text-blue-700 underline">{p.email}</a></>
+                      ) : p.phone ? (
                         <> · <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a></>
-                      )}
+                      ) : null}
                     </li>
                   ))}
                 </ul>
               )}
+              {emails.length > 0 && (
+                <a
+                  href={`mailto:?bcc=${emails.join(",")}&subject=${encodeURIComponent("Greeter reminder")}&body=${encodeURIComponent(message)}`}
+                  className="mt-2 mr-2 inline-block rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-50"
+                >
+                  Email reminder{emails.length > 1 ? ` (${emails.length})` : ""}
+                </a>
+              )}
               {phones.length > 0 && <GreeterReminder phones={phones} message={message} />}
-              {noPhone > 0 && (
+              {unreachable > 0 && (
                 <p className="mt-1 text-xs text-slate-500">
-                  {noPhone === people.length ? "No phone numbers to text." : `${noPhone} without a phone number won't get the text.`}
+                  {unreachable === people.length ? "No email addresses to remind." : `${unreachable} without an email won't get a reminder.`}
                 </p>
               )}
             </div>
