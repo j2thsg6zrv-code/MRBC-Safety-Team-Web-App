@@ -129,7 +129,9 @@ security definer
 set search_path = public
 as $$
 begin
+  -- auth.uid() is null for the Supabase SQL editor and other admin tools.
   if (new.role_id is distinct from old.role_id or new.active is distinct from old.active)
+     and auth.uid() is not null
      and not public.has_permission('manage_members') then
     raise exception 'Only members with the manage_members permission can change roles or active status';
   end if;
