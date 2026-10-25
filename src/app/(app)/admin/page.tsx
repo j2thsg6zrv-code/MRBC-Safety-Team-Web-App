@@ -102,9 +102,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
   const waiting = (profiles ?? []).filter((p) => !p.active).length;
 
   const signupUrl = siteUrl("/signup");
-  const [qrSvg, qrPng] = await Promise.all([
+  const appUrl = siteUrl("/");
+  const [qrSvg, qrPng, appQrSvg, appQrPng] = await Promise.all([
     QRCode.toString(signupUrl, { type: "svg", margin: 1 }),
     QRCode.toDataURL(signupUrl, { width: 800, margin: 2 }),
+    QRCode.toString(appUrl, { type: "svg", margin: 1 }),
+    QRCode.toDataURL(appUrl, { width: 800, margin: 2 }),
   ]);
 
   return (
@@ -134,6 +137,31 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
                 message="Create your MRBC Safety Team account here:"
                 qrPng={qrPng}
                 qrFileName="mrbc-safety-team-sign-up-qr.png"
+              />
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="mb-1 font-semibold">Link to the app</h2>
+          <p className="mb-4 text-sm text-slate-600">
+            For members who already have an account: scan this code (or open the link) to go straight to the app and
+            sign in. On a phone, use &ldquo;Add to Home Screen&rdquo; to keep it like an app.
+          </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div
+              className="w-48 shrink-0 rounded-md bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
+              style={{ colorScheme: "light", background: "#fff" }}
+              dangerouslySetInnerHTML={{ __html: appQrSvg }}
+            />
+            <div className="min-w-0 space-y-3">
+              <p className="break-all font-mono text-sm">{appUrl}</p>
+              <ShareLink
+                url={appUrl}
+                title="MRBC Safety Team app"
+                message="Open the MRBC Safety Team app here:"
+                qrPng={appQrPng}
+                qrFileName="mrbc-safety-team-app-qr.png"
               />
             </div>
           </div>
