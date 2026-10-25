@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import QRCode from "qrcode";
 
 // Automatic messages go out by email through a Gmail or iCloud account, using
 // these Vercel environment variables (Settings → Environment Variables):
@@ -39,7 +40,27 @@ export function toE164(phone: string): string | null {
 
 let mailer: nodemailer.Transporter | null = null;
 
-export async function sendEmail(to: string, subject: string, body: string) {
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * The plain-text message as simple HTML with clickable links. With `qrLink`,
+ * a QR code for the first link is added so people can scan it with a phone.
+ */
+async function emailHtml(body: string, qrLink: boolean) {
+  const url = body.match(/https?:\/\/\S+/)?.[0];
+  const html = escapeHtml(body)
+    .replace(/https?:\/\/[^\s<]+/g, (u) => `<a href="${u}">${u}</a>`)
+    .replace(/\n/g, "<br>");
+  if (!qrLink || !url) return { html, attachments: [] };
+  const qr = await QRCode.toBuffer(url, { width: 360, margin: 2 });
+  return {
+    html: `${html}<br><br>Or scan this code with your phone's camera:<br><img src="cid:qr" alt="QR code" width="180" height="180">`,
+    attachments: [{ filename: "sign-up-qr.png", content: qr, cid: "qr" }],
+  };
+}
+
+export async function sendEmail(to: string, subject: string, body: string, options: { qrLink?: boolean } = {}) {
   const auth = { user: emailAddress(), pass: emailPassword() };
   mailer ??= /@(icloud|me|mac)\.com$/i.test(auth.user)
     ? nodemailer.createTransport({ host: "smtp.mail.me.com", port: 587, requireTLS: true, auth })
@@ -49,6 +70,7 @@ export async function sendEmail(to: string, subject: string, body: string) {
     to,
     subject,
     text: body,
+    ...(await emailHtml(body, !!options.qrLink)),
   });
 }
 

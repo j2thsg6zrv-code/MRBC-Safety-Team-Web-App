@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       try {
         if (m.channel === "email") {
           if (!emailReady()) [failure, final] = ["Skipped: email isn't set up yet.", true];
-          else await sendEmail(m.recipient, m.subject ?? "MRBC Safety Team", m.body);
+          else await sendEmail(m.recipient, m.subject ?? "MRBC Safety Team", m.body, { qrLink: m.kind === "invite" });
         } else if (!textReady()) {
           [failure, final] = ["Skipped: texting isn't set up yet.", true];
         } else {

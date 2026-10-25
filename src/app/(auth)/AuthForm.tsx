@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { login, signup } from "./actions";
 import { Button, Card, ErrorMessage, Field, SuccessMessage } from "@/components/ui";
 
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+export function AuthForm({ mode, email }: { mode: "login" | "signup"; email?: string }) {
   const [state, action, pending] = useActionState(mode === "login" ? login : signup, undefined);
 
   return (
@@ -17,7 +17,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         </p>
         <form action={action} className="space-y-3">
           {mode === "signup" && <Field label="Full name" name="full_name" required />}
-          <Field label="Email" name="email" type="email" autoComplete="email" required />
+          <Field label="Email" name="email" type="email" autoComplete="email" defaultValue={email} required />
           <Field
             label="Password"
             name="password"

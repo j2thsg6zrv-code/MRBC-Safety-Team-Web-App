@@ -16,6 +16,7 @@ const KINDS: Record<string, string> = {
   thanks: "Thank-you",
   open_spots: "Open spots",
   greeter_reminder: "Greeter reminder",
+  invite: "Invite",
   test: "Test",
 };
 
