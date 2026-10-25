@@ -54,7 +54,7 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
           <h1 className="text-2xl font-semibold">Sunday Greeters</h1>
           <p className="mt-1 text-slate-700">
             Help welcome everyone on Sunday morning. Pick a Sunday, choose the 8:30 service, the 11:00 service or
-            both, and leave your phone number so we can send you a reminder.
+            both. Leave your phone number if you&apos;d like a reminder.
           </p>
         </header>
 
@@ -95,12 +95,11 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
           <form action={signUp} className="grid gap-3 sm:grid-cols-2">
             <Field label="Your name" name="name" autoComplete="name" required minLength={2} maxLength={80} />
             <Field
-              label="Phone number"
+              label="Phone number (optional)"
               name="phone"
               type="tel"
               autoComplete="tel"
-              required
-              hint="For a reminder text. Only the safety team sees it."
+              hint="For a reminder. Only the safety team sees it."
             />
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-sm font-medium text-slate-700">Sunday</span>

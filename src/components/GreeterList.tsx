@@ -21,7 +21,10 @@ export function GreeterList({ signups }: { signups: GreeterSignup[] }) {
                 <ul className="space-y-0.5 text-sm">
                   {people.map((p) => (
                     <li key={p.id}>
-                      {p.name} · <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a>
+                      {p.name}
+                      {p.phone && (
+                        <> · <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a></>
+                      )}
                     </li>
                   ))}
                 </ul>

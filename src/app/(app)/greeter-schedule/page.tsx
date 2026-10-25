@@ -80,8 +80,14 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
                           {people.map((p) => (
                             <li key={p.id} className="flex flex-wrap items-center gap-x-3">
                               <span>{p.name}</span>
-                              <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a>
-                              <a href={`sms:${p.phone}`} className="text-blue-700 underline">Text</a>
+                              {p.phone ? (
+                                <>
+                                  <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a>
+                                  <a href={`sms:${p.phone}`} className="text-blue-700 underline">Text</a>
+                                </>
+                              ) : (
+                                <span className="text-slate-500">No phone</span>
+                              )}
                               {canManage && (
                                 <form action={removeSignup}>
                                   <input type="hidden" name="id" value={p.id} />

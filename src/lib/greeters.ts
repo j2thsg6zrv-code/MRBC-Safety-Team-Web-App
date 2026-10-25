@@ -26,7 +26,7 @@ export type GreeterSignup = {
   id: string;
   sunday: string;
   name: string;
-  phone: string;
+  phone: string | null;
   first_service: boolean;
   second_service: boolean;
 };
