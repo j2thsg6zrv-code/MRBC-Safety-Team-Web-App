@@ -1,6 +1,7 @@
 import Link from "next/link";
 import QRCode from "qrcode";
 import { revalidatePath } from "next/cache";
+import { JoinInterestList } from "@/components/JoinInterestList";
 import { ShareLink } from "@/components/ShareLink";
 import { Status } from "@/components/Status";
 import { Button, Card, Field, PageHeader } from "@/components/ui";
@@ -115,6 +116,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
       <PageHeader title="Admin" />
       <Status searchParams={searchParams} />
       <div className="space-y-6">
+        <JoinInterestList />
+
         <Card>
           <h2 className="mb-1 font-semibold">Reports</h2>
           <p className="mb-3 text-sm text-slate-600">

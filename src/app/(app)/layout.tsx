@@ -24,11 +24,20 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  const supabase = await createClient();
   let waiting = 0;
   if (user.can("manage_members")) {
-    const supabase = await createClient();
     const { count } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("active", false);
     waiting = count ?? 0;
+  }
+  // People who filled in the public "Join the safety team" form and haven't been contacted.
+  let toContact = 0;
+  if (user.isAdmin) {
+    const { count } = await supabase
+      .from("join_interest")
+      .select("id", { count: "exact", head: true })
+      .is("contacted_at", null);
+    toContact = count ?? 0;
   }
 
   const items: NavItem[] = [
@@ -41,7 +50,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     { href: "/buildings", label: "Buildings" },
     { href: "/positions", label: "Positions" },
     { href: "/qualifications", label: "Qualifications" },
-    ...(user.isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+    { href: "/share", label: "Share" },
+    ...(user.isAdmin ? [{ href: "/admin", label: toContact ? `Admin (${toContact} to contact)` : "Admin" }] : []),
     { href: "/profile", label: "My Profile" },
   ];
 
