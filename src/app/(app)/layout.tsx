@@ -7,12 +7,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   const items: NavItem[] = [
     { href: "/", label: "Dashboard" },
-    { href: "/events", label: "Events", soon: true },
+    { href: "/events", label: "Events" },
     ...(user.can("view_watch_list") ? [{ href: "/watch-list", label: "Watch List", soon: true }] : []),
     { href: "/incidents", label: "Incident Reports", soon: true },
     { href: "/members", label: "Safety Team Members" },
-    { href: "/buildings", label: "Buildings", soon: true },
-    { href: "/positions", label: "Positions", soon: true },
+    { href: "/buildings", label: "Buildings" },
+    { href: "/positions", label: "Positions" },
     { href: "/qualifications", label: "Qualifications" },
     ...(user.can("manage_roles") ? [{ href: "/roles", label: "Roles & Permissions" }] : []),
     { href: "/profile", label: "My Profile" },
