@@ -34,3 +34,8 @@ export function formatTime(time: string | null): string {
 export function formatTimeRange(start: string, end: string | null): string {
   return end ? `${formatTime(start)} – ${formatTime(end)}` : formatTime(start);
 }
+
+/** The church-local calendar date of a database timestamp, e.g. created_at. */
+export function localDate(timestamp: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date(timestamp));
+}

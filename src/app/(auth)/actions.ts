@@ -3,16 +3,21 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { parseTheme, setThemeCookie } from "@/lib/theme";
 
 export type AuthState = { error?: string; message?: string } | undefined;
 
 export async function login(_: AuthState, formData: FormData): Promise<AuthState> {
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: String(formData.get("email")),
     password: String(formData.get("password")),
   });
   if (error) return { error: error.message };
+
+  // Bring the member's light/dark choice to this browser.
+  const { data: profile } = await supabase.from("profiles").select("theme").eq("id", data.user.id).single();
+  await setThemeCookie(parseTheme(profile?.theme));
   redirect("/");
 }
 

@@ -1,7 +1,54 @@
 @import "tailwindcss";
 
+/*
+ * Light and dark mode. Each color below has a light and a dark value; the
+ * browser picks one from the `color-scheme` of the element using it, which
+ * comes from the member's choice on My Profile (data-theme on the page).
+ */
+@theme {
+  --color-white: light-dark(#fff, oklch(23% 0.03 262));
+  --color-slate-50: light-dark(oklch(98.4% 0.003 247.858), oklch(27% 0.034 262));
+  --color-slate-100: light-dark(oklch(96.8% 0.007 247.896), oklch(17% 0.03 265));
+  --color-slate-200: light-dark(oklch(92.9% 0.013 255.508), oklch(32% 0.035 260));
+  --color-slate-300: light-dark(oklch(86.9% 0.022 252.894), oklch(40% 0.04 258));
+  --color-slate-400: light-dark(oklch(70.4% 0.04 256.788), oklch(56% 0.04 257));
+  --color-slate-500: light-dark(oklch(55.4% 0.046 257.417), oklch(68% 0.035 257));
+  --color-slate-600: light-dark(oklch(44.6% 0.043 257.281), oklch(75% 0.03 257));
+  --color-slate-700: light-dark(oklch(37.2% 0.044 257.287), oklch(83% 0.02 255));
+  --color-slate-800: light-dark(oklch(27.9% 0.041 260.031), oklch(88% 0.015 255));
+  --color-slate-900: light-dark(oklch(20.8% 0.042 265.755), oklch(95% 0.007 250));
+  --color-blue-50: light-dark(oklch(97% 0.014 254.604), oklch(28% 0.07 262));
+  --color-blue-100: light-dark(oklch(93.2% 0.032 255.585), oklch(33% 0.09 262));
+  --color-blue-400: light-dark(oklch(70.7% 0.165 254.624), oklch(62% 0.17 256));
+  --color-blue-600: light-dark(oklch(54.6% 0.245 262.881), oklch(66% 0.18 258));
+  --color-blue-700: light-dark(oklch(48.8% 0.243 264.376), oklch(60% 0.2 262));
+  --color-blue-800: light-dark(oklch(42.4% 0.199 265.638), oklch(82% 0.09 252));
+  --color-red-50: light-dark(oklch(97.1% 0.013 17.38), oklch(27% 0.07 25));
+  --color-red-100: light-dark(oklch(93.6% 0.032 17.717), oklch(32% 0.09 25));
+  --color-red-600: light-dark(oklch(57.7% 0.245 27.325), oklch(55% 0.21 27));
+  --color-red-700: light-dark(oklch(50.5% 0.213 27.518), oklch(76% 0.14 22));
+  --color-red-800: light-dark(oklch(44.4% 0.177 26.899), oklch(83% 0.1 20));
+  --color-green-50: light-dark(oklch(98.2% 0.018 155.826), oklch(27% 0.06 152));
+  --color-green-100: light-dark(oklch(96.2% 0.044 156.743), oklch(32% 0.07 152));
+  --color-green-700: light-dark(oklch(52.7% 0.154 150.069), oklch(80% 0.13 152));
+  --color-green-800: light-dark(oklch(44.8% 0.119 151.328), oklch(85% 0.11 152));
+  --color-amber-100: light-dark(oklch(96.2% 0.059 95.617), oklch(33% 0.07 70));
+  --color-amber-700: light-dark(oklch(55.5% 0.163 48.998), oklch(80% 0.13 80));
+  --color-amber-800: light-dark(oklch(47.3% 0.137 46.201), oklch(85% 0.12 85));
+  --color-amber-900: light-dark(oklch(41.4% 0.112 45.904), oklch(89% 0.1 90));
+  /* Text on blue and red buttons stays white in both modes. */
+  --color-onaccent: #fff;
+}
+
+:root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* The side menu is already dark, so it keeps its light-mode colors. */
+.fixed-colors { color-scheme: light; }
+
 body {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-slate-100);
+  color: var(--color-slate-900);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }

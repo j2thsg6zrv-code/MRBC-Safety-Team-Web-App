@@ -45,7 +45,7 @@ export default async function EventsPage({
             {past ? "Upcoming events" : "Past events"}
           </Link>
           {user.can("manage_events") && (
-            <Link href="/events/new" className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800">
+            <Link href="/events/new" className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-onaccent hover:brightness-90">
               New event
             </Link>
           )}

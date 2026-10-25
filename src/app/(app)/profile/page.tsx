@@ -5,6 +5,7 @@ import { Button, Card, Field, PageHeader } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
+import { parseTheme, setThemeCookie, type Theme } from "@/lib/theme";
 
 async function saveProfile(formData: FormData) {
   "use server";
@@ -22,6 +23,22 @@ async function saveProfile(formData: FormData) {
   revalidatePath("/", "layout");
   finish("/profile", error, "Your profile was saved.");
 }
+
+async function saveTheme(formData: FormData) {
+  "use server";
+  const user = await getCurrentUser();
+  const theme = parseTheme(formData.get("theme"));
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ theme }).eq("id", user.id);
+  if (!error) await setThemeCookie(theme);
+  finish("/profile", error, "Appearance saved.");
+}
+
+const THEME_OPTIONS: { value: Theme; label: string; hint: string }[] = [
+  { value: "system", label: "Match my device", hint: "Follows your phone or computer's setting" },
+  { value: "light", label: "Light", hint: "Always light" },
+  { value: "dark", label: "Dark", hint: "Always dark, easier on the eyes in a dim room" },
+];
 
 async function changePassword(formData: FormData) {
   "use server";
@@ -68,6 +85,26 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
           <Card>
             <h2 className="mb-2 font-semibold">My qualifications</h2>
             <QualificationList items={(quals ?? []) as unknown as MemberQualification[]} />
+          </Card>
+          <Card>
+            <h2 className="mb-3 font-semibold">Appearance</h2>
+            <form action={saveTheme} className="space-y-3">
+              <div className="grid gap-2 sm:grid-cols-3">
+                {THEME_OPTIONS.map((t) => (
+                  <label
+                    key={t.value}
+                    className="flex cursor-pointer gap-2 rounded-md border border-slate-300 p-3 text-sm has-[:checked]:border-blue-700 has-[:checked]:bg-blue-50"
+                  >
+                    <input type="radio" name="theme" value={t.value} defaultChecked={parseTheme(profile?.theme) === t.value} className="mt-0.5" />
+                    <span>
+                      <span className="block font-medium">{t.label}</span>
+                      <span className="block text-xs text-slate-500">{t.hint}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <Button type="submit" variant="secondary">Save appearance</Button>
+            </form>
           </Card>
           <Card>
             <h2 className="mb-3 font-semibold">Change password</h2>

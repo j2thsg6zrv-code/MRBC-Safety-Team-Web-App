@@ -74,11 +74,11 @@ export function Calendar({
                   : info
                     ? "border-slate-200 bg-white hover:border-blue-400"
                     : "border-transparent bg-white/50 hover:bg-white"
-              } ${isPast ? "opacity-60" : ""}`}
+              } ${isPast ? "text-slate-400" : ""}`}
             >
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                  isToday ? "bg-blue-700 font-semibold text-white" : ""
+                  isToday ? "bg-blue-700 font-semibold text-onaccent" : ""
                 }`}
               >
                 {Number(date.slice(8))}

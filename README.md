@@ -17,7 +17,8 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
 | Roles & Permissions | Done |
 | Buildings, Positions, Events | Done |
 | Dashboard calendar and sign-ups | Done |
-| Watch List, Incident Reports | Step 4 |
+| Watch List, Incident Reports | Done |
+| Light / dark mode (My Profile) | Done |
 
 ## First-time setup
 
@@ -28,15 +29,18 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
    address (for example `https://your-app.vercel.app`) and add
    `https://your-app.vercel.app/auth/confirm` to the Redirect URLs.
 4. Import this repository at [vercel.com/new](https://vercel.com/new) and add
-   the two environment variables from `.env.example` (values are under
-   Supabase **Project Settings → API**).
+   the environment variables from `.env.example` (Supabase values are under
+   **Project Settings → API**).
 5. Open the app and create your account. **The first person to sign up becomes
    the Admin.** Everyone after that gets the default role (Team Member).
 
 ## Running locally
 
+Needs Docker for the local database.
+
 ```bash
-cp .env.example .env.local   # then fill in the values
 npm install
+npm run db:start             # local Supabase; prints the URL and anon key
+cp .env.example .env.local   # then fill in the values it printed
 npm run dev
 ```

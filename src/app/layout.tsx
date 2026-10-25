@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { getTheme } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "Safety Team",
@@ -8,9 +9,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme={await getTheme()}>
       <body className="antialiased">{children}</body>
     </html>
   );

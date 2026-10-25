@@ -7,6 +7,8 @@ import { Card, ErrorMessage, SuccessMessage } from "@/components/ui";
 import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { formatDate, formatTimeRange, today } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
+import { WatchListCard } from "@/components/WatchListCard";
+import { photoUrls, type WatchListEntry } from "@/lib/watchList";
 
 /** Only allow redirects back to the dashboard. */
 function back(formData: FormData, result: { saved?: string; error?: string }) {
@@ -93,6 +95,18 @@ export default async function DashboardPage({
       : Promise.resolve({ data: [] as { id: string; full_name: string; email: string }[] }),
   ]);
 
+  const seesWatchList = user.can("view_watch_list") || user.can("manage_watch_list");
+  const [{ data: watchData }, { count: openIncidents }] = await Promise.all([
+    seesWatchList
+      ? supabase.from("watch_list").select("*").eq("archived", false).order("status").order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as WatchListEntry[] }),
+    user.can("view_incidents") || user.can("manage_incidents")
+      ? supabase.from("incident_reports").select("id", { count: "exact", head: true }).eq("status", "open")
+      : Promise.resolve({ count: null }),
+  ]);
+  const watchList = (watchData ?? []) as WatchListEntry[];
+  const watchPhotos = await photoUrls(supabase, watchList.slice(0, 4).map((w) => w.photo_path));
+
   const events = (eventData ?? []) as unknown as DayEvent[];
   const days: Record<string, DaySummary> = {};
   for (const e of events) {
@@ -131,6 +145,11 @@ export default async function DashboardPage({
       <h1 className="mb-4 text-2xl font-semibold">
         Welcome{user.fullName ? `, ${user.fullName.split(" ")[0]}` : ""}
       </h1>
+      {!!openIncidents && (
+        <Link href="/incidents?status=open" className="mb-4 block rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800 hover:underline">
+          {openIncidents} open incident {openIncidents === 1 ? "report needs" : "reports need"} follow-up →
+        </Link>
+      )}
       <div className="mb-4 space-y-2 empty:hidden">
         <ErrorMessage message={params.error} />
         <SuccessMessage message={params.saved} />
@@ -140,7 +159,7 @@ export default async function DashboardPage({
         <Card className="xl:col-start-1">
           <Calendar month={month} selected={selected} todayDate={todayDate} days={days} />
         </Card>
-        <div className="xl:col-start-2 xl:row-span-2 xl:row-start-1">
+        <div className="xl:col-start-2 xl:row-span-3 xl:row-start-1">
           {selected ? (
             <DayPanel
               date={selected}
@@ -195,6 +214,25 @@ export default async function DashboardPage({
             )}
           </Card>
         </div>
+        {seesWatchList && (
+          <Card className="xl:col-start-1">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold">Watch List</h2>
+              <Link href="/watch-list" className="text-sm text-blue-700 underline">
+                {watchList.length > 4 ? `See all ${watchList.length}` : "Open watch list"}
+              </Link>
+            </div>
+            {watchList.length === 0 ? (
+              <p className="text-sm text-slate-600">Nobody is on the watch list.</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2">
+                {watchList.slice(0, 4).map((w) => (
+                  <WatchListCard key={w.id} entry={w} photoUrl={w.photo_path ? watchPhotos[w.photo_path] : undefined} />
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
       </div>
     </>
   );

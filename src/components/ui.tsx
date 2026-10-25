@@ -27,7 +27,7 @@ export function Field({
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       <input
         {...props}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-base focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
       />
       {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
     </label>
@@ -40,7 +40,7 @@ export function TextArea({ label, ...props }: ComponentProps<"textarea"> & { lab
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       <textarea
         {...props}
-        className="w-full rounded-md border border-slate-300 px-3 py-2 text-base focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-base focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
       />
     </label>
   );
@@ -65,9 +65,9 @@ export function Select({
 }
 
 const buttonStyles = {
-  primary: "bg-blue-700 text-white hover:bg-blue-800",
+  primary: "bg-blue-700 text-onaccent hover:brightness-90",
   secondary: "border border-slate-300 bg-white text-slate-800 hover:bg-slate-50",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  danger: "bg-red-600 text-onaccent hover:brightness-90",
 };
 
 export function Button({
