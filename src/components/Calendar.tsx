@@ -68,20 +68,28 @@ export function Calendar({
               key={date}
               href={`/?month=${month}&day=${date}`}
               scroll={false}
-              className={`flex min-h-14 flex-col items-center rounded-md border p-1 text-sm sm:min-h-20 sm:items-start sm:p-2 ${
+              aria-current={isToday ? "date" : undefined}
+              className={`flex min-h-14 flex-col items-center rounded-md p-1 text-sm sm:min-h-20 sm:items-start sm:p-2 ${
+                isToday ? "border-2 border-blue-700" : "border"
+              } ${
                 isSelected
-                  ? "border-blue-700 bg-blue-50 ring-1 ring-blue-700"
-                  : info
-                    ? "border-slate-200 bg-white hover:border-blue-400"
-                    : "border-transparent bg-white/50 hover:bg-white"
+                  ? `bg-blue-100 ${isToday ? "border-blue-700" : "border-blue-200"}`
+                  : isToday
+                    ? "bg-white hover:bg-blue-50"
+                    : info
+                      ? "border-slate-200 bg-white hover:border-blue-400"
+                      : "border-transparent bg-white/50 hover:bg-white"
               } ${isPast ? "text-slate-400" : ""}`}
             >
-              <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full ${
-                  isToday ? "bg-blue-700 font-semibold text-onaccent" : ""
-                }`}
-              >
-                {Number(date.slice(8))}
+              <span className="flex items-center gap-1">
+                <span
+                  className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                    isToday ? "bg-blue-700 font-semibold text-onaccent" : ""
+                  }`}
+                >
+                  {Number(date.slice(8))}
+                </span>
+                {isToday && <span className="hidden text-xs font-semibold text-blue-700 sm:inline">Today</span>}
               </span>
               {info && (
                 <span className="mt-auto flex flex-col items-center gap-0.5 sm:items-start">
@@ -109,6 +117,12 @@ export function Calendar({
         })}
       </div>
       <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
+        <span>
+          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-700 align-middle text-[10px] font-semibold text-onaccent">
+            {Number(todayDate.slice(8))}
+          </span>{" "}
+          today
+        </span>
         <span><span className="rounded bg-amber-100 px-1 text-amber-800">3 open</span> spots still needed</span>
         <span><span className="rounded bg-green-100 px-1 text-green-800">You&apos;re serving</span> you&apos;re signed up</span>
       </div>
