@@ -116,6 +116,20 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
       <Status searchParams={searchParams} />
       <div className="space-y-6">
         <Card>
+          <h2 className="mb-1 font-semibold">Reports</h2>
+          <p className="mb-3 text-sm text-slate-600">
+            See how many times each member (and each greeter) signed up over the last 30, 90 and 180 days, year to date
+            and month by month. Download it as a PDF or CSV.
+          </p>
+          <Link
+            href="/admin/reports"
+            className="inline-flex items-center rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-onaccent hover:brightness-90"
+          >
+            Open sign-up reports
+          </Link>
+        </Card>
+
+        <Card>
           <h2 className="mb-1 font-semibold">Invite new safety team members</h2>
           <p className="mb-4 text-sm text-slate-600">
             New members scan this code (or open the link) to create their account. You&apos;ll still approve each
