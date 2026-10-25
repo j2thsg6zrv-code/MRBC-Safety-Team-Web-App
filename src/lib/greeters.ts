@@ -1,19 +1,23 @@
 import { addDays, today } from "@/lib/dates";
 
-/** How many Sundays ahead people can sign up to greet. */
-export const GREETER_WEEKS = 8;
+/** How many months ahead people can sign up to greet. */
+export const GREETER_MONTHS = 3;
 
 export const SERVICES = [
   { key: "first_service", label: "Before 8:30 service" },
   { key: "second_service", label: "Before 11:00 service" },
 ] as const;
 
-/** The next GREETER_WEEKS Sundays, starting today if today is Sunday. */
-export function upcomingSundays(count = GREETER_WEEKS): string[] {
+/** Every Sunday from today (if today is Sunday) through GREETER_MONTHS months ahead. */
+export function upcomingSundays(months = GREETER_MONTHS): string[] {
   const start = today();
+  const end = new Date(`${start}T00:00:00Z`);
+  end.setUTCMonth(end.getUTCMonth() + months);
+  const last = end.toISOString().slice(0, 10);
   const weekday = new Date(`${start}T00:00:00Z`).getUTCDay();
-  const first = addDays(start, (7 - weekday) % 7);
-  return Array.from({ length: count }, (_, i) => addDays(first, i * 7));
+  const sundays: string[] = [];
+  for (let d = addDays(start, (7 - weekday) % 7); d <= last; d = addDays(d, 7)) sundays.push(d);
+  return sundays;
 }
 
 /** The address of the public sign-up page, for sharing and the QR code. */
