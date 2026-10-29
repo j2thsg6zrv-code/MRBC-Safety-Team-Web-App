@@ -17,6 +17,12 @@ export type TrainingLesson = {
   title: string;
   body: string;
   video_url: string | null;
+  /** Optional practice question shown on the lesson's slide (not graded). */
+  check_prompt: string | null;
+  check_choices: string[] | null;
+  /** 0 is the first choice. */
+  check_answer: number | null;
+  check_explanation: string | null;
 };
 
 export type TrainingQuestion = {
@@ -60,4 +66,10 @@ export function formatWhen(timestamp: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+/** A privacy-friendly embed address for a YouTube link, or null for any other link. */
+export function youTubeEmbedUrl(url: string) {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
+  return match ? `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0` : null;
 }

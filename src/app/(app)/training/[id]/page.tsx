@@ -2,11 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { LessonBody } from "@/components/LessonBody";
+import { LessonSlides } from "@/components/LessonSlides";
+import { QuizAutosave } from "@/components/QuizAutosave";
 import { Status } from "@/components/Status";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { finish, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
+import type { SavedProgress } from "../actions";
 import {
   attemptsByClass,
   formatWhen,
@@ -28,6 +31,8 @@ async function submitQuiz(formData: FormData) {
   const { data, error } = await supabase.rpc("submit_training_quiz", { p_class: id, p_answers: answers });
   if (error || !data) finish(`/training/${id}`, error);
   const attempt = data as TrainingAttempt;
+  // Start the quiz fresh next time.
+  await supabase.from("training_progress").update({ quiz_answers: {} }).eq("class_id", id).eq("profile_id", (await getCurrentUser()).id);
   revalidatePath("/training");
   revalidatePath("/profile");
   const params = new URLSearchParams(
@@ -44,6 +49,10 @@ async function setStatus(formData: FormData) {
   const id = String(formData.get("id"));
   const status = String(formData.get("status"));
   const supabase = await createClient();
+  if (status === "approved") {
+    const { count } = await supabase.from("training_questions").select("id", { count: "exact", head: true }).eq("class_id", id);
+    if (!count) finish(`/training/${id}`, { message: "Add at least one quiz question before approving this class." });
+  }
   const { error } = await supabase.from("training_classes").update({ status }).eq("id", id);
   revalidatePath("/training");
   finish(`/training/${id}`, error, status === "approved" ? "Approved. The team can now take this class." : "Moved back to draft. The team can no longer see it.");
@@ -60,17 +69,24 @@ export default async function ClassPage({
   const user = await getCurrentUser();
   const supabase = await createClient();
 
-  const [{ data: cls }, { data: lessons }, { data: questions }, { data: attempts }] = await Promise.all([
+  const [{ data: cls }, { data: lessons }, { data: questions }, { data: attempts }, { data: progress }] = await Promise.all([
     supabase.from("training_classes").select("*, qualifications(name)").eq("id", id).maybeSingle(),
-    supabase.from("training_lessons").select("id, position, title, body, video_url").eq("class_id", id).order("position").order("created_at"),
+    supabase.from("training_lessons").select("*").eq("class_id", id).order("position").order("created_at"),
     supabase.from("training_questions").select("id, position, prompt, choices").eq("class_id", id).order("position").order("created_at"),
     supabase
       .from("training_attempts")
       .select("class_id, correct, total, passed, created_at")
       .eq("profile_id", user.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("training_progress")
+      .select("done_through, current_slide, quiz_answers")
+      .eq("class_id", id)
+      .eq("profile_id", user.id)
+      .maybeSingle(),
   ]);
   if (!cls) notFound();
+  const saved = progress as SavedProgress | null;
 
   const c = cls as TrainingClass & { qualifications: { name: string } | null };
   const mine = attemptsByClass((attempts ?? []) as TrainingAttempt[]);
@@ -81,6 +97,7 @@ export default async function ClassPage({
     prerequisite = data ?? { id: c.prerequisite_id, title: "the earlier class" };
   }
   const quiz = (questions ?? []) as TrainingQuestion[];
+  const lessonList = (lessons ?? []) as TrainingLesson[];
   const isDraft = c.status === "draft";
 
   return (
@@ -123,7 +140,7 @@ export default async function ClassPage({
         {c.summary && <p className="mb-2 text-slate-700">{c.summary}</p>}
         <p className="text-sm text-slate-500">
           {c.minutes ? `About ${c.minutes} minutes · ` : ""}
-          {(lessons ?? []).length} lessons · {quiz.length}-question quiz · pass with {c.pass_percent}%
+          {lessonList.length} lessons · {quiz.length}-question quiz · pass with {c.pass_percent}%
           {c.qualifications ? ` · earns ${c.qualifications.name}` : ""}
         </p>
         {attempt?.passed && (
@@ -134,21 +151,13 @@ export default async function ClassPage({
         )}
       </Card>
 
-      <div className="space-y-4">
-        {((lessons ?? []) as TrainingLesson[]).map((lesson, i) => (
-          <Card key={lesson.id}>
-            <h2 className="mb-2 font-semibold">
-              Lesson {i + 1}: {lesson.title}
-            </h2>
-            <LessonBody body={lesson.body} />
-            {lesson.video_url && (
-              <a href={lesson.video_url} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-blue-700 underline">
-                Watch the video
-              </a>
-            )}
-          </Card>
-        ))}
-
+      <LessonSlides
+        lessons={lessonList}
+        canSkip={user.isAdmin}
+        classId={c.id}
+        saved={saved}
+        slide={Object.fromEntries(lessonList.map((l) => [l.id, <LessonBody key={l.id} body={l.body} />]))}
+        quiz={
         <Card>
           <h2 className="mb-3 font-semibold">Quiz</h2>
           {quiz.length === 0 ? (
@@ -165,6 +174,7 @@ export default async function ClassPage({
             <form action={submitQuiz} className="space-y-5">
               <input type="hidden" name="id" value={c.id} />
               <input type="hidden" name="question_count" value={quiz.length} />
+              <QuizAutosave classId={c.id} saved={saved?.quiz_answers ?? {}} />
               {quiz.map((q, i) => (
                 <fieldset key={q.id}>
                   <legend className="mb-2 font-medium">
@@ -188,7 +198,8 @@ export default async function ClassPage({
             </form>
           )}
         </Card>
-      </div>
+        }
+      />
     </>
   );
 }

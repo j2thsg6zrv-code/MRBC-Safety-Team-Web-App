@@ -5,6 +5,7 @@ import { Button, Card, Field, PageHeader } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
+import { readPptx } from "@/lib/pptx";
 import { formatWhen, type TrainingClass } from "@/lib/training";
 
 async function createClass(formData: FormData) {
@@ -19,6 +20,36 @@ async function createClass(formData: FormData) {
     .single();
   if (error || !data) finish("/training/manage", error);
   redirect(`/training/manage/${data.id}?saved=Class+created+as+a+draft.`);
+}
+
+async function importPowerPoint(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) finish("/training/manage", { message: "Choose a PowerPoint file first." });
+  if (!file.name.toLowerCase().endsWith(".pptx")) {
+    finish("/training/manage", { message: "Only .pptx files can be imported. In PowerPoint, use File → Save As → PowerPoint Presentation (.pptx)." });
+  }
+  let deck;
+  try {
+    deck = await readPptx(await file.arrayBuffer());
+  } catch (e) {
+    finish("/training/manage", { message: e instanceof Error ? e.message : "That file couldn't be read." });
+  }
+  const supabase = await createClient();
+  const { count } = await supabase.from("training_classes").select("id", { count: "exact", head: true });
+  const { data, error } = await supabase
+    .from("training_classes")
+    .insert({ title: deck.title, summary: deck.summary, sort_order: (count ?? 0) + 1 })
+    .select("id")
+    .single();
+  if (error || !data) finish("/training/manage", error);
+  const { error: lessonError } = await supabase
+    .from("training_lessons")
+    .insert(deck.slides.map((slide, i) => ({ class_id: data.id, position: i + 1, title: slide.title, body: slide.body })));
+  if (lessonError) finish(`/training/manage/${data.id}`, lessonError);
+  const saved = `Imported ${deck.slides.length} slides as a draft. Review the text, add quiz questions, then approve it.`;
+  redirect(`/training/manage/${data.id}?${new URLSearchParams({ saved })}`);
 }
 
 export default async function ManageTrainingPage({ searchParams }: { searchParams: SearchParams }) {
@@ -90,6 +121,28 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
             <Field label="Title" name="title" required />
           </div>
           <Button type="submit">Create draft</Button>
+        </form>
+      </Card>
+
+      <Card className="mb-8">
+        <h2 className="mb-1 font-semibold">Import a PowerPoint</h2>
+        <p className="mb-3 text-sm text-slate-600">
+          Each slide becomes a lesson slide: its title, its text as bullet points, and its speaker notes. The class is
+          saved as a draft so you can review it, add a quiz, and approve it when it&apos;s ready. Pictures and charts
+          aren&apos;t carried over, so add a video link or describe them in the text if they matter.
+        </p>
+        <form action={importPowerPoint} className="flex flex-wrap items-end gap-3">
+          <label className="block min-w-64 flex-1">
+            <span className="mb-1 block text-sm font-medium text-slate-700">PowerPoint file (.pptx)</span>
+            <input
+              type="file"
+              name="file"
+              accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+              required
+              className="block w-full text-sm"
+            />
+          </label>
+          <Button type="submit" pendingLabel="Importing…">Import as draft</Button>
         </form>
       </Card>
 
