@@ -47,7 +47,7 @@ async function setStatus(formData: FormData) {
   "use server";
   await requireAdmin();
   const id = String(formData.get("id"));
-  const status = String(formData.get("status"));
+  const status = formData.get("status") === "approved" ? "approved" : "draft";
   const supabase = await createClient();
   if (status === "approved") {
     const { count } = await supabase.from("training_questions").select("id", { count: "exact", head: true }).eq("class_id", id);
@@ -122,14 +122,16 @@ export default async function ClassPage({
                   <span className="font-semibold">Draft.</span> Only admins can see this class. Review the lessons and quiz
                   below, then approve it for the team.
                 </p>
-                <Button type="submit" name="status" value="approved">Approve for use</Button>
+                <input type="hidden" name="status" value="approved" />
+                <Button type="submit">Approve for use</Button>
               </>
             ) : (
               <>
                 <p className="text-sm text-slate-600">
                   Approved{c.approved_at ? ` on ${formatWhen(c.approved_at)}` : ""}. The team can take this class.
                 </p>
-                <Button type="submit" variant="secondary" name="status" value="draft">Move back to draft</Button>
+                <input type="hidden" name="status" value="draft" />
+                <Button type="submit" variant="secondary">Move back to draft</Button>
               </>
             )}
           </form>
