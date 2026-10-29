@@ -95,6 +95,72 @@ function readingMs(text: string) {
 
 const canSpeak = () => typeof window !== "undefined" && "speechSynthesis" in window;
 
+const VOICE_KEY = "training-voice";
+// Joke and robotic voices some systems include, which shouldn't read a class.
+const NOVELTY =
+  /\b(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|kathy|ralph|eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley)\b/i;
+
+/** How natural a voice is likely to sound, from what its name says about it. */
+function voiceScore(v: SpeechSynthesisVoice) {
+  let score = 0;
+  if (/premium/i.test(v.name)) score += 5;
+  if (/enhanced|natural|neural/i.test(v.name)) score += 4;
+  if (/google/i.test(v.name)) score += 2;
+  if (/\b(ava|samantha|allison|evan|zoe|tom|susan|nathan|joelle|noelle|aaron|nicky|aria|jenny|guy)\b/i.test(v.name)) score += 1;
+  if (/^en-US/i.test(v.lang)) score += 1;
+  return score;
+}
+
+/** A short name for the picker, like "Ava (Enhanced), US". */
+function voiceLabel(v: SpeechSynthesisVoice) {
+  const name = v.name
+    .replace(/^(Microsoft|Google)\s+/i, "")
+    .replace(/\s+Online\s+\(Natural\)/i, " (Natural)")
+    .replace(/\s+-\s+.*$/, "");
+  const region = v.lang.split(/[-_]/)[1]?.toUpperCase();
+  return region ? `${name}, ${region}` : name;
+}
+
+/**
+ * The few most natural English voices on this device, best first, and the
+ * member's pick. The pick is remembered on the device for next time.
+ */
+function useVoices() {
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceURI, setVoiceURI] = useState("");
+
+  useEffect(() => {
+    if (!canSpeak()) return;
+    const load = () => {
+      const seen = new Set<string>();
+      const best = window.speechSynthesis
+        .getVoices()
+        .filter((v) => /^en/i.test(v.lang) && !NOVELTY.test(v.name))
+        .sort((a, b) => voiceScore(b) - voiceScore(a))
+        .filter((v) => !seen.has(voiceLabel(v)) && !!seen.add(voiceLabel(v)))
+        .slice(0, 6);
+      setVoices(best);
+    };
+    load();
+    window.speechSynthesis.addEventListener("voiceschanged", load);
+    try {
+      setVoiceURI(localStorage.getItem(VOICE_KEY) ?? "");
+    } catch {}
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", load);
+  }, []);
+
+  const choose = (uri: string) => {
+    setVoiceURI(uri);
+    try {
+      localStorage.setItem(VOICE_KEY, uri);
+    } catch {}
+  };
+
+  // Without a pick, use the most natural voice found.
+  const voice = voices.find((v) => v.voiceURI === voiceURI) ?? voices[0] ?? null;
+  return { voices, voice, choose };
+}
+
 /**
  * The lessons as slides, one at a time, read aloud. Next unlocks once the
  * reading is done; muting stops the voice but keeps the same reading time.
@@ -133,6 +199,9 @@ export function LessonSlides({
   // Bumped whenever reading stops, so a cancelled voice's late "ended" event is ignored.
   const generation = useRef(0);
   mutedRef.current = muted;
+  const { voices, voice, choose } = useVoices();
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(voice);
+  voiceRef.current = voice;
 
   const onQuiz = index >= total;
   const lesson = lessons[index];
@@ -175,6 +244,10 @@ export function LessonSlides({
       sentences.forEach((sentence, n) => {
         const u = new SpeechSynthesisUtterance(sentence.trim());
         u.rate = 1;
+        if (voiceRef.current) {
+          u.voice = voiceRef.current;
+          u.lang = voiceRef.current.lang;
+        }
         if (n === sentences.length - 1) u.onend = () => generation.current === mine && finish(i);
         window.speechSynthesis.speak(u);
       });
@@ -218,6 +291,13 @@ export function LessonSlides({
     }
   };
 
+  const changeVoice = (uri: string) => {
+    choose(uri);
+    voiceRef.current = voices.find((v) => v.voiceURI === uri) ?? null;
+    // Restart the current slide in the new voice, so they hear it right away.
+    if (speaking) read(index, !slideDone);
+  };
+
   const go = (next: number) => {
     stop();
     setIndex(next);
@@ -237,7 +317,7 @@ export function LessonSlides({
         )}
         <p className="mb-4 text-sm text-slate-600">
           Each slide is read aloud. Turn your sound on, or use the mute button and read along. The Next button unlocks
-          when the reading is done.
+          when the reading is done. You can pick a different voice on each slide.
         </p>
         <button
           type="button"
@@ -295,7 +375,23 @@ export function LessonSlides({
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Slide {index + 1} of {total}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {voices.length > 1 && !muted && (
+                <label className="flex items-center gap-1 text-sm text-slate-600">
+                  Voice
+                  <select
+                    value={voice?.voiceURI ?? ""}
+                    onChange={(e) => changeVoice(e.target.value)}
+                    className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+                  >
+                    {voices.map((v) => (
+                      <option key={v.voiceURI} value={v.voiceURI}>
+                        {voiceLabel(v)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {slideDone && !muted && canSpeak() && (
                 <button
                   type="button"
