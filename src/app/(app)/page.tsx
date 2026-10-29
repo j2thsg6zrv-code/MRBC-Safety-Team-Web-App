@@ -83,6 +83,7 @@ export default async function DashboardPage({
     { data: watchData },
     { count: openIncidents },
     { data: greeterData },
+    { data: myCerts },
   ] = await Promise.all([
     supabase
       .from("events")
@@ -117,6 +118,10 @@ export default async function DashboardPage({
           .eq("sunday", selected)
           .order("created_at")
       : Promise.resolve({ data: [] as GreeterSignup[] }),
+    supabase
+      .from("member_certifications")
+      .select("id, expires_on, certifications(name)")
+      .eq("profile_id", user.id),
   ]);
   const watchList = (watchData ?? []) as WatchListEntry[];
   const watchPhotos = await photoUrls(supabase, watchList.slice(0, 4).map((w) => w.photo_path));
@@ -144,9 +149,9 @@ export default async function DashboardPage({
       .filter((q) => !q.expires_on || (selected ? q.expires_on >= selected : q.expires_on >= todayDate))
       .map((q) => q.qualification_id),
   );
-  const expiring = (myQuals ?? [])
-    .map((q) => ({ ...q, status: expiryStatus(q.expires_on) }))
-    .filter((q) => q.status.className !== "text-slate-500");
+  const certifications = ((myCerts ?? []) as unknown as { id: string; expires_on: string | null; certifications: { name: string } | null }[])
+    .map((c) => ({ id: c.id, name: c.certifications?.name ?? "", status: expiryStatus(c.expires_on) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const mySignups = ((mySignupData ?? []) as unknown as MySignup[])
     .map((s) => ({ id: s.id, position: s.event_positions.positions?.name, event: s.event_positions.events }))
@@ -229,18 +234,19 @@ export default async function DashboardPage({
             )}
           </Card>
           <Card>
-            <h2 className="mb-2 font-semibold">My qualifications</h2>
-            {expiring.length === 0 ? (
-              <p className="text-sm text-slate-600">
-                {(myQuals ?? []).length === 0 ? "None recorded yet." : "All current."}{" "}
-                <Link href="/profile" className="text-blue-700 underline">View profile</Link>
-              </p>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="font-semibold">My certifications</h2>
+              <Link href="/certifications" className="text-sm text-blue-700 underline">
+                {certifications.length ? "Manage" : "Add one"}
+              </Link>
+            </div>
+            {certifications.length === 0 ? (
+              <p className="text-sm text-slate-600">None yet. Pass a training class or add one you&apos;ve earned.</p>
             ) : (
               <ul className="space-y-1 text-sm">
-                {expiring.map((q) => (
-                  <li key={q.qualification_id}>
-                    {(q.qualifications as unknown as { name: string } | null)?.name}:{" "}
-                    <span className={q.status.className}>{q.status.label}</span>
+                {certifications.map((c) => (
+                  <li key={c.id}>
+                    {c.name}: <span className={c.status.className}>{c.status.label}</span>
                   </li>
                 ))}
               </ul>
