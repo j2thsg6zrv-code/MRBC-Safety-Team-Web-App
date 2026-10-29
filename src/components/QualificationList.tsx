@@ -2,7 +2,8 @@ export type MemberQualification = {
   id: string;
   earned_on: string;
   expires_on: string | null;
-  qualifications: { name: string } | null;
+  qualifications?: { name: string } | null;
+  certifications?: { name: string } | null;
 };
 
 export function expiryStatus(expiresOn: string | null) {
@@ -16,11 +17,13 @@ export function expiryStatus(expiresOn: string | null) {
 export function QualificationList({
   items,
   action,
+  empty = "No qualifications recorded.",
 }: {
   items: MemberQualification[];
   action?: (id: string) => React.ReactNode;
+  empty?: string;
 }) {
-  if (items.length === 0) return <p className="text-sm text-slate-500">No qualifications recorded.</p>;
+  if (items.length === 0) return <p className="text-sm text-slate-500">{empty}</p>;
   return (
     <ul className="divide-y divide-slate-100">
       {items.map((q) => {
@@ -28,7 +31,7 @@ export function QualificationList({
         return (
           <li key={q.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
             <div>
-              <p className="font-medium">{q.qualifications?.name}</p>
+              <p className="font-medium">{q.qualifications?.name ?? q.certifications?.name}</p>
               <p className="text-xs text-slate-500">
                 Earned {q.earned_on} · <span className={status.className}>{status.label}</span>
               </p>

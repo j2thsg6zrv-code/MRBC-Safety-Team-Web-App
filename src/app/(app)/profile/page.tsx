@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
-import { QualificationList, type MemberQualification } from "@/components/QualificationList";
+import { CredentialCard } from "@/components/CredentialCard";
+import type { MemberQualification } from "@/components/QualificationList";
 import { Status } from "@/components/Status";
 import { Button, Card, Field, PageHeader } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
@@ -75,13 +76,20 @@ async function changePassword(formData: FormData) {
 export default async function ProfilePage({ searchParams }: { searchParams: SearchParams }) {
   const user = await getCurrentUser();
   const supabase = await createClient();
-  const [{ data: profile }, { data: quals }] = await Promise.all([
+  const [{ data: profile }, { data: quals }, { data: allQuals }, { data: certs }, { data: allCerts }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
       .from("member_qualifications")
       .select("id, earned_on, expires_on, qualifications(name)")
       .eq("profile_id", user.id)
       .order("expires_on"),
+    supabase.from("qualifications").select("id, name").order("name"),
+    supabase
+      .from("member_certifications")
+      .select("id, earned_on, expires_on, certifications(name)")
+      .eq("profile_id", user.id)
+      .order("expires_on"),
+    supabase.from("certifications").select("id, name").order("name"),
   ]);
 
   return (
@@ -105,10 +113,24 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
             <h2 className="mb-1 font-semibold">Role</h2>
             <p className="text-slate-700">{user.roleName ?? "No role assigned"}</p>
           </Card>
-          <Card>
-            <h2 className="mb-2 font-semibold">My qualifications</h2>
-            <QualificationList items={(quals ?? []) as unknown as MemberQualification[]} />
-          </Card>
+          <CredentialCard
+            kind="qualification"
+            title="My qualifications"
+            profileId={user.id}
+            items={(quals ?? []) as unknown as MemberQualification[]}
+            choices={allQuals ?? []}
+            canEdit
+            returnTo="/profile"
+          />
+          <CredentialCard
+            kind="certification"
+            title="My certifications"
+            profileId={user.id}
+            items={(certs ?? []) as unknown as MemberQualification[]}
+            choices={allCerts ?? []}
+            canEdit
+            returnTo="/profile"
+          />
           <Card>
             <h2 className="mb-1 font-semibold">Messages from the team</h2>
             <p className="mb-3 text-sm text-slate-600">

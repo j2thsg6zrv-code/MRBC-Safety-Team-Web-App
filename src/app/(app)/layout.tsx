@@ -54,6 +54,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     { href: "/buildings", label: "Buildings" },
     { href: "/positions", label: "Positions" },
     { href: "/qualifications", label: "Qualifications" },
+    { href: "/certifications", label: "Certifications" },
     { href: "/share", label: "Share" },
     ...(user.isAdmin ? [{ href: "/admin", label: toContact ? `Admin (${toContact} to contact)` : "Admin" }] : []),
     { href: "/profile", label: "My Profile" },
