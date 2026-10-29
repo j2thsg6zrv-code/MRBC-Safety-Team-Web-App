@@ -2,7 +2,7 @@
 // database policies (supabase/migrations). Admins have all of them, and only
 // admins can edit roles or make someone an admin.
 export const PERMISSIONS = [
-  { key: "manage_members", label: "Manage team members", description: "Change anyone's role, qualifications and active status." },
+  { key: "manage_members", label: "Manage team members", description: "Change anyone's role, qualifications, certifications and active status." },
   { key: "manage_qualifications", label: "Manage qualifications", description: "Add and edit the list of qualifications." },
   { key: "manage_buildings", label: "Manage buildings", description: "Add and edit buildings." },
   { key: "manage_positions", label: "Manage positions", description: "Add and edit positions." },

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { QualificationList, type MemberQualification } from "@/components/QualificationList";
+import { CredentialCard } from "@/components/CredentialCard";
+import type { MemberQualification } from "@/components/QualificationList";
 import { Status } from "@/components/Status";
-import { Button, Card, Field, PageHeader, Select } from "@/components/ui";
+import { Button, Card, PageHeader, Select } from "@/components/ui";
 import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
@@ -21,48 +22,6 @@ async function updateMembership(formData: FormData) {
   finish(`/members/${id}`, error);
 }
 
-async function addQualification(formData: FormData) {
-  "use server";
-  await requirePermission("manage_members");
-  const id = String(formData.get("id"));
-  const qualificationId = String(formData.get("qualification_id"));
-  const earnedOn = String(formData.get("earned_on"));
-  const supabase = await createClient();
-
-  // Work out the expiry date from the qualification's length unless one was given.
-  let expiresOn = text(formData, "expires_on");
-  if (!expiresOn) {
-    const { data: qual } = await supabase
-      .from("qualifications")
-      .select("valid_months")
-      .eq("id", qualificationId)
-      .single();
-    if (qual?.valid_months) {
-      const date = new Date(`${earnedOn}T00:00:00Z`);
-      date.setUTCMonth(date.getUTCMonth() + qual.valid_months);
-      expiresOn = date.toISOString().slice(0, 10);
-    }
-  }
-
-  const { error } = await supabase.from("member_qualifications").upsert(
-    { profile_id: id, qualification_id: qualificationId, earned_on: earnedOn, expires_on: expiresOn },
-    { onConflict: "profile_id,qualification_id" },
-  );
-  finish(`/members/${id}`, error, "Qualification added.");
-}
-
-async function removeQualification(formData: FormData) {
-  "use server";
-  await requirePermission("manage_members");
-  const id = String(formData.get("id"));
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("member_qualifications")
-    .delete()
-    .eq("id", String(formData.get("member_qualification_id")));
-  finish(`/members/${id}`, error, "Qualification removed.");
-}
-
 export default async function MemberPage({
   params,
   searchParams,
@@ -75,7 +34,7 @@ export default async function MemberPage({
   const canManage = user.can("manage_members");
   const supabase = await createClient();
 
-  const [{ data: member }, { data: quals }, { data: roles }, { data: allQuals }] = await Promise.all([
+  const [{ data: member }, { data: quals }, { data: roles }, { data: allQuals }, { data: certs }, { data: allCerts }] = await Promise.all([
     supabase.from("profiles").select("*, roles(name, is_admin)").eq("id", id).maybeSingle(),
     supabase
       .from("member_qualifications")
@@ -84,12 +43,20 @@ export default async function MemberPage({
       .order("expires_on"),
     supabase.from("roles").select("id, name, is_admin").order("name"),
     supabase.from("qualifications").select("id, name").order("name"),
+    supabase
+      .from("member_certifications")
+      .select("id, earned_on, expires_on, certifications(name)")
+      .eq("profile_id", id)
+      .order("expires_on"),
+    supabase.from("certifications").select("id, name").order("name"),
   ]);
   if (!member) notFound();
   const memberIsAdmin = !!(member.roles as { is_admin: boolean } | null)?.is_admin;
   // Only admins can make someone an admin or change an admin's role or status.
   const canEditRole = canManage && (user.isAdmin || !memberIsAdmin);
   const roleChoices = (roles ?? []).filter((r) => user.isAdmin || !r.is_admin);
+  // Members keep their own qualifications and certifications up to date.
+  const canEditCredentials = canManage || id === user.id;
 
   return (
     <>
@@ -141,37 +108,26 @@ export default async function MemberPage({
             </Card>
           )}
         </div>
-        <Card>
-          <h2 className="mb-2 font-semibold">Qualifications</h2>
-          <QualificationList
+        <div className="space-y-6">
+          <CredentialCard
+            kind="qualification"
+            title="Qualifications"
+            profileId={id}
             items={(quals ?? []) as unknown as MemberQualification[]}
-            action={
-              canManage
-                ? (mqId) => (
-                    <form action={removeQualification}>
-                      <input type="hidden" name="id" value={id} />
-                      <input type="hidden" name="member_qualification_id" value={mqId} />
-                      <Button type="submit" variant="secondary" className="px-2 py-1 text-xs">Remove</Button>
-                    </form>
-                  )
-                : undefined
-            }
+            choices={allQuals ?? []}
+            canEdit={canEditCredentials}
+            returnTo={`/members/${id}`}
           />
-          {canManage && (allQuals ?? []).length > 0 && (
-            <form action={addQualification} className="mt-4 space-y-3 border-t border-slate-100 pt-4">
-              <h3 className="text-sm font-semibold">Add or renew a qualification</h3>
-              <input type="hidden" name="id" value={id} />
-              <Select label="Qualification" name="qualification_id" required>
-                {(allQuals ?? []).map((q) => (
-                  <option key={q.id} value={q.id}>{q.name}</option>
-                ))}
-              </Select>
-              <Field label="Date earned" name="earned_on" type="date" required />
-              <Field label="Expires on" name="expires_on" type="date" hint="Leave blank to work it out from the qualification's length." />
-              <Button type="submit">Add qualification</Button>
-            </form>
-          )}
-        </Card>
+          <CredentialCard
+            kind="certification"
+            title="Certifications"
+            profileId={id}
+            items={(certs ?? []) as unknown as MemberQualification[]}
+            choices={allCerts ?? []}
+            canEdit={canEditCredentials}
+            returnTo={`/members/${id}`}
+          />
+        </div>
       </div>
     </>
   );
