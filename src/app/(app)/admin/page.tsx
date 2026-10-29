@@ -94,14 +94,15 @@ function PermissionChecklist({ selected = [] }: { selected?: string[] }) {
 export default async function AdminPage({ searchParams }: { searchParams: SearchParams }) {
   await requireAdmin();
   const supabase = await createClient();
-  const [{ data: roleData }, { data: profiles }] = await Promise.all([
+  const [{ data: roleData }, { data: profiles }, { data: inviteData }] = await Promise.all([
     supabase.from("roles").select("*").order("is_admin", { ascending: false }).order("name"),
     supabase.from("profiles").select("id, full_name, email, active, role_id").order("full_name"),
+    supabase.from("member_invites").select("email").is("accepted_at", null).order("email"),
   ]);
+  const pendingInvites = (inviteData ?? []) as { email: string }[];
   const roles = (roleData ?? []) as Role[];
   const adminRoleIds = new Set(roles.filter((r) => r.is_admin).map((r) => r.id));
   const admins = (profiles ?? []).filter((p) => p.active && p.role_id && adminRoleIds.has(p.role_id));
-  const waiting = (profiles ?? []).filter((p) => !p.active).length;
 
   const signupUrl = siteUrl("/signup");
   const appUrl = siteUrl("/");
@@ -136,12 +137,16 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
         </Card>
 
         <Card>
-          <h2 className="mb-1 font-semibold">Invite new safety team members</h2>
+          <h2 className="mb-1 font-semibold">Sign-up QR code for invited members</h2>
           <p className="mb-4 text-sm text-slate-600">
-            New members scan this code (or open the link) to create their account. You&apos;ll still approve each
-            person on the{" "}
-            <Link href="/members" className="text-blue-700 underline">Safety Team Members</Link> page
-            {waiting > 0 && <> ({waiting} waiting now)</>} before they can see anything.
+            People you&apos;ve invited scan this code (or open the link) to create their account. Only email
+            addresses you&apos;ve sent an invite to can sign up; anyone else is turned away. Send invites on the{" "}
+            <Link href="/members" className="text-blue-700 underline">Safety Team Members</Link> page.{" "}
+            {pendingInvites.length > 0 ? (
+              <>Invited, not signed up yet: {pendingInvites.map((i) => i.email).join(", ")}.</>
+            ) : (
+              <>Everyone you&apos;ve invited has signed up.</>
+            )}
           </p>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div
@@ -154,7 +159,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
               <ShareLink
                 url={signupUrl}
                 title="Join the MRBC Safety Team app"
-                message="Create your MRBC Safety Team account here:"
+                message="You're invited! Create your MRBC Safety Team account here, using the email address your invite was sent to:"
                 qrPng={qrPng}
                 qrFileName="mrbc-safety-team-sign-up-qr.png"
               />

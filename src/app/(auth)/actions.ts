@@ -35,6 +35,14 @@ export async function signup(_: AuthState, formData: FormData): Promise<AuthStat
       emailRedirectTo: `${origin}/auth/confirm`,
     },
   });
+  // The database refuses anyone who wasn't sent an invite (see 0018_invite_only_signup.sql),
+  // which Supabase reports only as a generic database error.
+  if (error?.message.includes("Database error saving new user")) {
+    return {
+      error:
+        "This email address hasn't been invited. Use the exact email your invite was sent to, or ask a safety team leader for an invite.",
+    };
+  }
   if (error) return { error: error.message };
   if (data.session) redirect("/");
   return { message: "Check your email for a link to confirm your account." };
