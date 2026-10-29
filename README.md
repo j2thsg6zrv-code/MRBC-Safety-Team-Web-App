@@ -20,6 +20,7 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
 | Watch List, Incident Reports | Done |
 | Light / dark mode (My Profile) | Done |
 | Greeters: public sign-up at `/greeters` (no login) and the team's list with phone numbers | Done |
+| Training: classes with lessons and a quiz; admins build and approve them, and passing adds the certification to the member's qualifications | Done |
 
 ## First-time setup
 
