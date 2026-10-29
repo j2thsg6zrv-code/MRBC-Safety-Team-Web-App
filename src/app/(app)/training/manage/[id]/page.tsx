@@ -1,12 +1,24 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { CreateAllPictures, NewPictureButton } from "@/components/CreatePictures";
 import { Status } from "@/components/Status";
 import { Button, Card, Field, PageHeader, Select, TextArea } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
+import { canCreatePictures, savePicture } from "@/lib/slidePictures";
 import { createClient } from "@/lib/supabase/server";
-import { readChoices, type TrainingClass, type TrainingLesson, type TrainingQuestion } from "@/lib/training";
+import {
+  PICTURE_BUCKET,
+  pictureUrls,
+  readChoices,
+  type TrainingClass,
+  type TrainingLesson,
+  type TrainingQuestion,
+} from "@/lib/training";
+
+// Creating an AI picture can take most of a minute.
+export const maxDuration = 60;
 
 const path = (id: string) => `/training/manage/${id}`;
 
@@ -64,9 +76,24 @@ async function saveLesson(formData: FormData) {
   const id = String(formData.get("id"));
   const lessonId = text(formData, "lesson_id");
   const supabase = await createClient();
+  // A new picture replaces the old one; "remove" clears it.
+  const file = formData.get("picture");
+  let picture: { image_path?: string | null } = {};
+  if (file instanceof File && file.size > 0) {
+    if (!file.type.startsWith("image/")) finish(path(id), { message: "The picture must be an image file." });
+    const saved = await savePicture(supabase, file, file.type);
+    if (saved.error) finish(path(id), saved.error);
+    picture = { image_path: saved.path };
+  } else if (formData.get("remove_picture")) {
+    picture = { image_path: null };
+  }
+  const old = lessonId && "image_path" in picture
+    ? (await supabase.from("training_lessons").select("image_path").eq("id", lessonId).single()).data?.image_path
+    : null;
   const { error } = lessonId
-    ? await supabase.from("training_lessons").update(lessonFields(formData)).eq("id", lessonId)
-    : await supabase.from("training_lessons").insert({ ...lessonFields(formData), class_id: id });
+    ? await supabase.from("training_lessons").update({ ...lessonFields(formData), ...picture }).eq("id", lessonId)
+    : await supabase.from("training_lessons").insert({ ...lessonFields(formData), ...picture, class_id: id });
+  if (!error && old) await supabase.storage.from(PICTURE_BUCKET).remove([old]);
   finish(path(id), error, lessonId ? "Lesson saved." : "Lesson added.");
 }
 
@@ -75,7 +102,10 @@ async function deleteLesson(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("id"));
   const supabase = await createClient();
-  const { error } = await supabase.from("training_lessons").delete().eq("id", String(formData.get("lesson_id")));
+  const lessonId = String(formData.get("lesson_id"));
+  const { data: old } = await supabase.from("training_lessons").select("image_path").eq("id", lessonId).single();
+  const { error } = await supabase.from("training_lessons").delete().eq("id", lessonId);
+  if (!error && old?.image_path) await supabase.storage.from(PICTURE_BUCKET).remove([old.image_path]);
   finish(path(id), error, "Lesson deleted.");
 }
 
@@ -126,7 +156,19 @@ async function deleteQuestion(formData: FormData) {
   finish(path(id), error, "Question deleted.");
 }
 
-function LessonForm({ classId, lesson, next }: { classId: string; lesson?: TrainingLesson; next: number }) {
+function LessonForm({
+  classId,
+  lesson,
+  next,
+  pictureUrl,
+  canCreate,
+}: {
+  classId: string;
+  lesson?: TrainingLesson;
+  next: number;
+  pictureUrl?: string;
+  canCreate: boolean;
+}) {
   return (
     <form action={saveLesson} className="grid gap-3">
       <input type="hidden" name="id" value={classId} />
@@ -149,6 +191,29 @@ function LessonForm({ classId, lesson, next }: { classId: string; lesson?: Train
         defaultValue={lesson?.video_url ?? ""}
         hint="YouTube links play right on the slide. Other links open in a new tab."
       />
+      <div className="rounded-md border border-slate-200 p-3">
+        <p className="mb-2 text-sm font-medium">Picture</p>
+        <div className="flex flex-wrap items-start gap-3">
+          {pictureUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={pictureUrl} alt="" className="w-48 rounded border border-slate-200" />
+          ) : (
+            <div className="flex h-32 w-48 items-center justify-center rounded bg-slate-100 text-sm text-slate-400">No picture</div>
+          )}
+          <div className="grid gap-2 text-sm">
+            <label className="grid gap-1">
+              {pictureUrl ? "Replace with your own picture" : "Upload a picture"}
+              <input type="file" name="picture" accept="image/*" className="text-sm" />
+            </label>
+            {pictureUrl && (
+              <label className="flex items-center gap-2">
+                <input type="checkbox" name="remove_picture" /> Remove the picture
+              </label>
+            )}
+            {lesson && canCreate && <NewPictureButton lessonId={lesson.id} hasPicture={!!pictureUrl} />}
+          </div>
+        </div>
+      </div>
       <details className="rounded-md border border-slate-200 p-3" open={!!lesson?.check_prompt}>
         <summary className="cursor-pointer text-sm font-medium">Check your understanding (optional practice question)</summary>
         <div className="mt-3 grid gap-3">
@@ -256,6 +321,8 @@ export default async function EditClassPage({
     .in("question_id", questionList.map((q) => q.id));
   const correctById = new Map((answers ?? []).map((a) => [a.question_id as string, a.correct_index as number]));
   const nextLesson = Math.max(0, ...lessonList.map((l) => l.position)) + 1;
+  const pictures = await pictureUrls(supabase, lessonList.map((l) => l.image_path));
+  const canCreate = canCreatePictures();
   const nextQuestion = Math.max(0, ...questionList.map((q) => q.position)) + 1;
 
   return (
@@ -314,16 +381,40 @@ export default async function EditClassPage({
         </form>
       </Card>
 
+      <Card className="mb-6">
+        <h2 className="mb-2 font-semibold">Slide pictures</h2>
+        {canCreate ? (
+          <>
+            <p className="mb-3 text-sm text-slate-600">
+              The app can create a cartoon for each slide that fits what it covers, in the same friendly style. You can
+              replace any picture below with a new one or your own.
+            </p>
+            <CreateAllPictures lessonIds={lessonList.filter((l) => !l.image_path).map((l) => l.id)} />
+          </>
+        ) : (
+          <p className="text-sm text-slate-600">
+            Upload a picture on any lesson below. To have the app create cartoons for every slide, add an OpenAI API key
+            as <code>OPENAI_API_KEY</code> in the app&apos;s Vercel settings.
+          </p>
+        )}
+      </Card>
+
       <h2 className="mb-2 font-semibold">Lessons</h2>
       <div className="mb-6 space-y-4">
         {lessonList.map((lesson) => (
           <Card key={lesson.id}>
-            <LessonForm classId={c.id} lesson={lesson} next={nextLesson} />
+            <LessonForm
+              classId={c.id}
+              lesson={lesson}
+              next={nextLesson}
+              pictureUrl={lesson.image_path ? pictures[lesson.image_path] : undefined}
+              canCreate={canCreate}
+            />
           </Card>
         ))}
         <Card>
           <h3 className="mb-3 font-medium">Add a lesson</h3>
-          <LessonForm classId={c.id} next={nextLesson} />
+          <LessonForm classId={c.id} next={nextLesson} canCreate={canCreate} />
         </Card>
       </div>
 
