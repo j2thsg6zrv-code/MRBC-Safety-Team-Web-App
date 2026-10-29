@@ -1,6 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { getCurrentUser } from "@/lib/auth";
+import { canCreatePictures, createPicture } from "@/lib/slidePictures";
 import { createClient } from "@/lib/supabase/server";
+import { PICTURE_BUCKET } from "@/lib/training";
 
 export type SavedProgress = {
   done_through: number;
@@ -22,4 +26,30 @@ export async function saveProgress(classId: string, progress: Partial<SavedProgr
       { profile_id: user.id, class_id: classId, ...progress, updated_at: new Date().toISOString() },
       { onConflict: "profile_id,class_id" },
     );
+}
+
+/**
+ * Creates an AI picture for one lesson and puts it on the slide, replacing
+ * any picture it had. Admins only. Called one slide at a time by the class
+ * editor, since each picture takes a while to make.
+ */
+export async function createLessonPicture(lessonId: string): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user.isAdmin) return { error: "Only admins can create pictures." };
+  if (!canCreatePictures()) return { error: "Picture creation isn't set up yet: add OPENAI_API_KEY in Vercel." };
+  const supabase = await createClient();
+  const { data: lesson } = await supabase
+    .from("training_lessons")
+    .select("id, class_id, title, body, image_path")
+    .eq("id", lessonId)
+    .single();
+  if (!lesson) return { error: "That lesson no longer exists." };
+  const picture = await createPicture(supabase, lesson);
+  if (picture.error || !picture.path) return { error: picture.error?.message ?? "Couldn't save the picture." };
+  const { error } = await supabase.from("training_lessons").update({ image_path: picture.path }).eq("id", lessonId);
+  if (error) return { error: error.message };
+  if (lesson.image_path) await supabase.storage.from(PICTURE_BUCKET).remove([lesson.image_path]);
+  revalidatePath(`/training/manage/${lesson.class_id}`);
+  revalidatePath(`/training/${lesson.class_id}`);
+  return {};
 }

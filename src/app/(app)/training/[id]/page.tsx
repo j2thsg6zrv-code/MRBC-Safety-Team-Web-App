@@ -13,6 +13,7 @@ import type { SavedProgress } from "../actions";
 import {
   attemptsByClass,
   formatWhen,
+  pictureUrls,
   type TrainingAttempt,
   type TrainingClass,
   type TrainingLesson,
@@ -98,6 +99,7 @@ export default async function ClassPage({
   }
   const quiz = (questions ?? []) as TrainingQuestion[];
   const lessonList = (lessons ?? []) as TrainingLesson[];
+  const pictures = await pictureUrls(supabase, lessonList.map((l) => l.image_path));
   const isDraft = c.status === "draft";
 
   return (
@@ -156,7 +158,22 @@ export default async function ClassPage({
         canSkip={user.isAdmin}
         classId={c.id}
         saved={saved}
-        slide={Object.fromEntries(lessonList.map((l) => [l.id, <LessonBody key={l.id} body={l.body} />]))}
+        slide={Object.fromEntries(
+          lessonList.map((l) => [
+            l.id,
+            <div key={l.id}>
+              {l.image_path && pictures[l.image_path] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={pictures[l.image_path]}
+                  alt=""
+                  className="mb-4 aspect-[3/2] w-full rounded-lg border border-slate-200 object-cover"
+                />
+              )}
+              <LessonBody body={l.body} />
+            </div>,
+          ]),
+        )}
         quiz={
         <Card>
           <h2 className="mb-3 font-semibold">Quiz</h2>

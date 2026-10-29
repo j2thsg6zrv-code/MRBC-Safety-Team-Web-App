@@ -22,6 +22,7 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
 | Greeters: public sign-up at `/greeters` (no login) and the team's list with phone numbers | Done |
 | Training: classes with lessons and a quiz; admins build and approve them, and passing adds the certification to the member's qualifications | Done |
 | Training slides: read aloud (with mute), Next unlocks when the reading is done, videos, practice questions, saved progress, and PowerPoint import for admins | Done |
+| Slide pictures: upload or replace a picture on any slide, or have the app create matching cartoons (needs an OpenAI API key) | Done |
 
 ## First-time setup
 

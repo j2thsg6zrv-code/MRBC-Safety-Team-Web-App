@@ -1,3 +1,7 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export const PICTURE_BUCKET = "training";
+
 export type TrainingClass = {
   id: string;
   title: string;
@@ -23,6 +27,8 @@ export type TrainingLesson = {
   /** 0 is the first choice. */
   check_answer: number | null;
   check_explanation: string | null;
+  /** The slide's picture in the training bucket, if it has one. */
+  image_path: string | null;
 };
 
 export type TrainingQuestion = {
@@ -72,4 +78,14 @@ export function formatWhen(timestamp: string) {
 export function youTubeEmbedUrl(url: string) {
   const match = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/);
   return match ? `https://www.youtube-nocookie.com/embed/${match[1]}?rel=0` : null;
+}
+
+/** Short-lived links for slide pictures, keyed by storage path. */
+export async function pictureUrls(supabase: SupabaseClient, paths: (string | null)[]): Promise<Record<string, string>> {
+  const wanted = paths.filter((p): p is string => !!p);
+  if (wanted.length === 0) return {};
+  const { data } = await supabase.storage.from(PICTURE_BUCKET).createSignedUrls(wanted, 60 * 60 * 4);
+  const urls: Record<string, string> = {};
+  for (const d of data ?? []) if (d.path && d.signedUrl) urls[d.path] = d.signedUrl;
+  return urls;
 }
