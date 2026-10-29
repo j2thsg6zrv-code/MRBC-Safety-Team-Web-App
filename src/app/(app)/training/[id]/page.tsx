@@ -71,7 +71,7 @@ export default async function ClassPage({
   const supabase = await createClient();
 
   const [{ data: cls }, { data: lessons }, { data: questions }, { data: attempts }, { data: progress }] = await Promise.all([
-    supabase.from("training_classes").select("*, qualifications(name)").eq("id", id).maybeSingle(),
+    supabase.from("training_classes").select("*, certifications(name)").eq("id", id).maybeSingle(),
     supabase.from("training_lessons").select("*").eq("class_id", id).order("position").order("created_at"),
     supabase.from("training_questions").select("id, position, prompt, choices").eq("class_id", id).order("position").order("created_at"),
     supabase
@@ -89,7 +89,7 @@ export default async function ClassPage({
   if (!cls) notFound();
   const saved = progress as SavedProgress | null;
 
-  const c = cls as TrainingClass & { qualifications: { name: string } | null };
+  const c = cls as TrainingClass & { certifications: { name: string } | null };
   const mine = attemptsByClass((attempts ?? []) as TrainingAttempt[]);
   const attempt = mine.get(c.id);
   let prerequisite: { id: string; title: string } | null = null;
@@ -145,7 +145,7 @@ export default async function ClassPage({
         <p className="text-sm text-slate-500">
           {c.minutes ? `About ${c.minutes} minutes · ` : ""}
           {lessonList.length} lessons · {quiz.length}-question quiz · pass with {c.pass_percent}%
-          {c.qualifications ? ` · earns ${c.qualifications.name}` : ""}
+          {c.certifications ? ` · earns ${c.certifications.name}` : ""}
         </p>
         {attempt?.passed && (
           <p className="mt-2 text-sm font-medium text-green-700">

@@ -8,6 +8,7 @@ export type TrainingClass = {
   summary: string | null;
   minutes: number | null;
   qualification_id: string | null;
+  certification_id: string | null;
   prerequisite_id: string | null;
   pass_percent: number;
   sort_order: number;

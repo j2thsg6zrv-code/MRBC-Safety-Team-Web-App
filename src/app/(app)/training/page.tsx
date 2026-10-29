@@ -13,7 +13,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Sea
     // Members only get approved classes back; admins get drafts too.
     supabase
       .from("training_classes")
-      .select("*, qualifications(name)")
+      .select("*, certifications(name)")
       .order("sort_order")
       .order("title"),
     supabase
@@ -23,7 +23,7 @@ export default async function TrainingPage({ searchParams }: { searchParams: Sea
       .order("created_at", { ascending: false }),
   ]);
 
-  const list = (classes ?? []) as (TrainingClass & { qualifications: { name: string } | null })[];
+  const list = (classes ?? []) as (TrainingClass & { certifications: { name: string } | null })[];
   const mine = attemptsByClass((attempts ?? []) as TrainingAttempt[]);
   const titles = new Map(list.map((c) => [c.id, c.title]));
   const visible = list.filter((c) => c.status === "approved");
@@ -40,8 +40,8 @@ export default async function TrainingPage({ searchParams }: { searchParams: Sea
       </PageHeader>
       <Status searchParams={searchParams} />
       <p className="mb-4 text-slate-700">
-        Read each lesson, then take the short quiz. When you pass, the class&apos;s certification is added to your
-        qualifications on My Profile.
+        Read each lesson, then take the short quiz. When you pass, the class&apos;s certification is added to My
+        Certifications.
       </p>
 
       {visible.length === 0 && (
@@ -70,8 +70,8 @@ export default async function TrainingPage({ searchParams }: { searchParams: Sea
                 {c.summary && <p className="mb-2 text-sm text-slate-600">{c.summary}</p>}
                 <p className="text-xs text-slate-500">
                   {c.minutes ? `About ${c.minutes} minutes` : null}
-                  {c.minutes && c.qualifications ? " · " : null}
-                  {c.qualifications ? `Earns ${c.qualifications.name}` : null}
+                  {c.minutes && c.certifications ? " · " : null}
+                  {c.certifications ? `Earns ${c.certifications.name}` : null}
                 </p>
                 {locked && (
                   <p className="mt-1 text-xs text-slate-500">
