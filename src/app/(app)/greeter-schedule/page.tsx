@@ -67,19 +67,20 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
   const canManage = user.can("manage_events");
   const sundays = upcomingSundays();
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("greeter_signups")
-    .select("id, sunday, name, email, phone, first_service, second_service")
-    .gte("sunday", sundays[0])
-    .order("sunday")
-    .order("created_at");
+  const url = publicGreetersUrl();
+  const [{ data }, { data: contactData }, qr] = await Promise.all([
+    supabase
+      .from("greeter_signups")
+      .select("id, sunday, name, email, phone, first_service, second_service")
+      .gte("sunday", sundays[0])
+      .order("sunday")
+      .order("created_at"),
+    supabase.from("greeter_contacts").select("id, name, email, phone, contact_name").order("name"),
+    QRCode.toString(url, { type: "svg", margin: 1 }),
+  ]);
   const signups = (data ?? []) as GreeterSignup[];
-  const { data: contactData } = await supabase.from("greeter_contacts").select("id, name, email, phone, contact_name").order("name");
   const contacts = (contactData ?? []) as GreeterContact[];
   const allSundays = [...new Set([...sundays, ...signups.map((s) => s.sunday)])].sort();
-
-  const url = publicGreetersUrl();
-  const qr = await QRCode.toString(url, { type: "svg", margin: 1 });
 
   return (
     <>

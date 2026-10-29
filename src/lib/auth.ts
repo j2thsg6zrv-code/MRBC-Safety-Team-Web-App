@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Permission } from "@/lib/permissions";
@@ -15,12 +16,15 @@ export type CurrentUser = {
   can: (permission: Permission) => boolean;
 };
 
-export async function getCurrentUser(): Promise<CurrentUser> {
+// Cached so the layout and the page share one lookup per page load.
+export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  // getClaims checks the sign-in token's signature without a separate trip to
+  // the sign-in server (the middleware has already refreshed it).
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) redirect("/login");
+  const user = { id: claims.sub, email: claims.email };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -42,7 +46,7 @@ export async function getCurrentUser(): Promise<CurrentUser> {
     permissions,
     can: (permission) => isAdmin || permissions.includes(permission),
   };
-}
+});
 
 export async function requirePermission(permission: Permission) {
   const user = await getCurrentUser();

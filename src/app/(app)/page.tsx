@@ -74,7 +74,16 @@ export default async function DashboardPage({
   const selected =
     params.day && params.day.startsWith(month) ? params.day : todayDate.startsWith(month) ? todayDate : null;
 
-  const [{ data: eventData }, { data: myQuals }, { data: mySignupData }, { data: members }] = await Promise.all([
+  const seesWatchList = user.can("view_watch_list") || user.can("manage_watch_list");
+  const [
+    { data: eventData },
+    { data: myQuals },
+    { data: mySignupData },
+    { data: members },
+    { data: watchData },
+    { count: openIncidents },
+    { data: greeterData },
+  ] = await Promise.all([
     supabase
       .from("events")
       .select(
@@ -95,10 +104,6 @@ export default async function DashboardPage({
     user.can("manage_events")
       ? supabase.from("profiles").select("id, full_name, email").eq("active", true).order("full_name")
       : Promise.resolve({ data: [] as { id: string; full_name: string; email: string }[] }),
-  ]);
-
-  const seesWatchList = user.can("view_watch_list") || user.can("manage_watch_list");
-  const [{ data: watchData }, { count: openIncidents }, { data: greeterData }] = await Promise.all([
     seesWatchList
       ? supabase.from("watch_list").select("*").eq("archived", false).order("status").order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as WatchListEntry[] }),
