@@ -34,6 +34,7 @@ async function updateClass(formData: FormData) {
       title: text(formData, "title") ?? "Untitled class",
       summary: text(formData, "summary"),
       minutes: minutes ? Number(minutes) : null,
+      certification_id: text(formData, "certification_id"),
       qualification_id: text(formData, "qualification_id"),
       prerequisite_id: text(formData, "prerequisite_id"),
       pass_percent: Number(text(formData, "pass_percent") ?? 80),
@@ -303,13 +304,14 @@ export default async function EditClassPage({
   await requireAdmin();
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data: cls }, { data: lessons }, { data: questions }, { data: quals }, { data: others }] =
+  const [{ data: cls }, { data: lessons }, { data: questions }, { data: quals }, { data: others }, { data: certs }] =
     await Promise.all([
       supabase.from("training_classes").select("*").eq("id", id).maybeSingle(),
       supabase.from("training_lessons").select("*").eq("class_id", id).order("position").order("created_at"),
       supabase.from("training_questions").select("*").eq("class_id", id).order("position").order("created_at"),
       supabase.from("qualifications").select("id, name").order("name"),
       supabase.from("training_classes").select("id, title").neq("id", id).order("sort_order"),
+      supabase.from("certifications").select("id, name").order("name"),
     ]);
   if (!cls) notFound();
   const c = cls as TrainingClass;
@@ -351,8 +353,16 @@ export default async function EditClassPage({
             <Field label="Passing score (%)" name="pass_percent" type="number" min={1} max={100} defaultValue={c.pass_percent} />
             <Field label="Order in the list" name="sort_order" type="number" defaultValue={c.sort_order} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Select label="Certification earned" name="qualification_id" defaultValue={c.qualification_id ?? ""}>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Select label="Certification earned" name="certification_id" defaultValue={c.certification_id ?? ""}>
+              <option value="">None</option>
+              {(certs ?? []).map((q) => (
+                <option key={q.id} value={q.id}>
+                  {q.name}
+                </option>
+              ))}
+            </Select>
+            <Select label="Also counts as qualification" name="qualification_id" defaultValue={c.qualification_id ?? ""}>
               <option value="">None</option>
               {(quals ?? []).map((q) => (
                 <option key={q.id} value={q.id}>
@@ -370,7 +380,10 @@ export default async function EditClassPage({
             </Select>
           </div>
           <p className="text-xs text-slate-500">
-            Add or rename certifications on the <Link href="/qualifications" className="underline">Qualifications</Link> page.
+            Passing adds the certification to the member&apos;s My Certifications. The qualification is only needed if a
+            position requires it. Add or rename them under{" "}
+            <Link href="/admin/certifications" className="underline">Admin › Certifications</Link> and{" "}
+            <Link href="/admin/qualifications" className="underline">Admin › Qualifications</Link>.
           </p>
           <div className="flex gap-2">
             <Button type="submit">Save details</Button>

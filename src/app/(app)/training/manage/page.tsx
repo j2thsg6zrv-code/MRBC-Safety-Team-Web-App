@@ -56,7 +56,7 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
   await requireAdmin();
   const supabase = await createClient();
   const [{ data: classes }, { data: passes }] = await Promise.all([
-    supabase.from("training_classes").select("*, qualifications(name)").order("sort_order").order("title"),
+    supabase.from("training_classes").select("*, certifications(name)").order("sort_order").order("title"),
     supabase
       .from("training_attempts")
       .select("id, created_at, correct, total, profile_id, profiles(full_name, email), training_classes(title)")
@@ -64,7 +64,7 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
       .order("created_at", { ascending: false })
       .limit(25),
   ]);
-  const list = (classes ?? []) as (TrainingClass & { qualifications: { name: string } | null })[];
+  const list = (classes ?? []) as (TrainingClass & { certifications: { name: string } | null })[];
   const recent = (passes ?? []) as unknown as {
     id: string;
     created_at: string;
@@ -82,7 +82,7 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
       <Status searchParams={searchParams} />
       <p className="mb-4 text-slate-700">
         New classes start as drafts that only admins can see. Open a class to review it, then approve it so the team can
-        take it. When someone passes, the class&apos;s qualification is added to their profile and admins get an email.
+        take it. When someone passes, the class&apos;s certification is added to their My Certifications and admins get an email.
       </p>
 
       <Card className="mb-4">
@@ -95,7 +95,7 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
                 </Link>
                 <p className="text-xs text-slate-500">
                   {c.minutes ? `${c.minutes} min · ` : ""}
-                  {c.qualifications ? `Earns ${c.qualifications.name}` : "No certification set"}
+                  {c.certifications ? `Earns ${c.certifications.name}` : "No certification set"}
                 </p>
               </div>
               <div className="flex items-center gap-3">
