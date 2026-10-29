@@ -43,11 +43,18 @@ async function deleteClass(formData: FormData) {
 }
 
 function lessonFields(formData: FormData) {
+  const checkChoices = readChoices(String(formData.get("check_choices") ?? ""));
+  const checkAnswer = Number(text(formData, "check_answer") ?? 1) - 1;
+  const hasCheck = !!text(formData, "check_prompt") && checkChoices.length >= 2;
   return {
     title: text(formData, "title") ?? "Untitled lesson",
     body: String(formData.get("body") ?? "").trim(),
     video_url: text(formData, "video_url"),
     position: Number(text(formData, "position") ?? 0),
+    check_prompt: hasCheck ? text(formData, "check_prompt") : null,
+    check_choices: hasCheck ? checkChoices : null,
+    check_answer: hasCheck ? Math.min(Math.max(checkAnswer, 0), checkChoices.length - 1) : null,
+    check_explanation: hasCheck ? text(formData, "check_explanation") : null,
   };
 }
 
@@ -135,7 +142,31 @@ function LessonForm({ classId, lesson, next }: { classId: string; lesson?: Train
         defaultValue={lesson?.body}
         placeholder={"- Start a line with a dash for a bullet point\n- Put **two stars** around words to make them bold"}
       />
-      <Field label="Video link (optional)" name="video_url" type="url" defaultValue={lesson?.video_url ?? ""} />
+      <Field
+        label="Video link (optional)"
+        name="video_url"
+        type="url"
+        defaultValue={lesson?.video_url ?? ""}
+        hint="YouTube links play right on the slide. Other links open in a new tab."
+      />
+      <details className="rounded-md border border-slate-200 p-3" open={!!lesson?.check_prompt}>
+        <summary className="cursor-pointer text-sm font-medium">Check your understanding (optional practice question)</summary>
+        <div className="mt-3 grid gap-3">
+          <Field label="Question or scenario" name="check_prompt" defaultValue={lesson?.check_prompt ?? ""} />
+          <TextArea label="Choices, one per line" name="check_choices" rows={3} defaultValue={lesson?.check_choices?.join("\n") ?? ""} />
+          <div className="max-w-48">
+            <Field
+              label="Correct choice (number)"
+              name="check_answer"
+              type="number"
+              min={1}
+              max={6}
+              defaultValue={lesson?.check_answer != null ? lesson.check_answer + 1 : ""}
+            />
+          </div>
+          <TextArea label="Why it's right (shown after they answer)" name="check_explanation" rows={2} defaultValue={lesson?.check_explanation ?? ""} />
+        </div>
+      </details>
       <div className="flex gap-2">
         <Button type="submit">{lesson ? "Save lesson" : "Add lesson"}</Button>
         {lesson && (
