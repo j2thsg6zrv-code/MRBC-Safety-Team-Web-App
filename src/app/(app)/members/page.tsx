@@ -68,14 +68,13 @@ function MemberRow({ m }: { m: Member }) {
 export default async function MembersPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await getCurrentUser();
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, full_name, email, phone, active, roles(name)")
-    .order("full_name");
+  const [{ data }, { data: inviteData }] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, email, phone, active, roles(name)").order("full_name"),
+    user.can("manage_members")
+      ? supabase.from("member_invites").select("email, created_at").is("accepted_at", null).order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+  ]);
   const members = (data ?? []) as unknown as Member[];
-  const { data: inviteData } = user.can("manage_members")
-    ? await supabase.from("member_invites").select("email, created_at").is("accepted_at", null).order("created_at", { ascending: false })
-    : { data: [] };
   const invites = (inviteData ?? []) as { email: string; created_at: string }[];
   const active = members.filter((m) => m.active);
   const inactive = members.filter((m) => !m.active);

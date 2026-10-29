@@ -24,23 +24,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  // Badge counts for the menu, fetched together.
   const supabase = await createClient();
-  let waiting = 0;
-  if (user.can("manage_members")) {
-    const { count } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("active", false);
-    waiting = count ?? 0;
-  }
-  // People who filled in the public "Join the safety team" form and haven't been contacted.
-  let toContact = 0;
-  if (user.isAdmin) {
-    const { count } = await supabase
-      .from("join_interest")
-      .select("id", { count: "exact", head: true })
-      .is("contacted_at", null);
-    toContact = count ?? 0;
-  }
-
-  const { data: chats } = await supabase.rpc("chat_overview");
+  const [{ count: waiting }, { count: toContact }, { data: chats }] = await Promise.all([
+    user.can("manage_members")
+      ? supabase.from("profiles").select("id", { count: "exact", head: true }).eq("active", false)
+      : Promise.resolve({ count: 0 }),
+    // People who filled in the public "Join the safety team" form and haven't been contacted.
+    user.isAdmin
+      ? supabase.from("join_interest").select("id", { count: "exact", head: true }).is("contacted_at", null)
+      : Promise.resolve({ count: 0 }),
+    supabase.rpc("chat_overview"),
+  ]);
   const unreadChats = ((chats ?? []) as { unread: number }[]).reduce((sum, c) => sum + c.unread, 0);
 
   const items: NavItem[] = [

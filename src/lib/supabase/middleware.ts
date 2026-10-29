@@ -28,9 +28,9 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refreshes the sign-in if it has expired, then checks its signature.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub;
 
   const { pathname } = request.nextUrl;
   const isPublic =
