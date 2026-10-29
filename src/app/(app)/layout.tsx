@@ -50,6 +50,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     { href: "/greeter-schedule", label: "Greeters" },
     ...(user.can("view_watch_list") || user.can("manage_watch_list") ? [{ href: "/watch-list", label: "Watch List" }] : []),
     { href: "/incidents", label: "Incident Reports" },
+    { href: "/training", label: "Training" },
     { href: "/members", label: waiting ? `Safety Team Members (${waiting} waiting)` : "Safety Team Members" },
     { href: "/buildings", label: "Buildings" },
     { href: "/positions", label: "Positions" },
