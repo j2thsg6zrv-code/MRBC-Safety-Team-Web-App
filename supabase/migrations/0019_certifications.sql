@@ -1,16 +1,13 @@
 -- Members add their own qualifications and certifications (Matt, 2026-10-29).
--- Every approved member can add, renew and remove qualifications on their own
--- profile and add new kinds of qualification to the list. Certifications work
--- the same way, except only admins create the kinds of certification. Members
--- with "Manage team members" (and admins) can still do this for anyone.
+-- Every approved member can add, renew and remove qualifications and
+-- certifications on their own record. Admins set up the lists of both (Admin
+-- tab). Members with "Manage team members" (and admins) can still do this for
+-- anyone.
 
 create policy "Members can change their own qualifications" on public.member_qualifications
   for all to authenticated
   using (profile_id = auth.uid() and public.is_active_member())
   with check (profile_id = auth.uid() and public.is_active_member());
-
-create policy "Approved members can add qualifications" on public.qualifications
-  for insert to authenticated with check (public.is_active_member());
 
 -- Certifications -------------------------------------------------------------
 

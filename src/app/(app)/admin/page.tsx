@@ -137,6 +137,27 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
         </Card>
 
         <Card>
+          <h2 className="mb-1 font-semibold">Qualifications and certifications</h2>
+          <p className="mb-3 text-sm text-slate-600">
+            Set up the qualifications and certifications members can hold, and see who has each certification.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/qualifications"
+              className="inline-flex items-center rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-onaccent hover:brightness-90"
+            >
+              Qualifications
+            </Link>
+            <Link
+              href="/admin/certifications"
+              className="inline-flex items-center rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-onaccent hover:brightness-90"
+            >
+              Certifications
+            </Link>
+          </div>
+        </Card>
+
+        <Card>
           <h2 className="mb-1 font-semibold">Sign-up QR code for invited members</h2>
           <p className="mb-4 text-sm text-slate-600">
             People you&apos;ve invited scan this code (or open the link) to create their account. Only email
