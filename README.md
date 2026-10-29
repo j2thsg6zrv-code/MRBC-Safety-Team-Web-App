@@ -34,7 +34,9 @@ Built with Next.js, Supabase (database and logins) and hosted on Vercel.
    `https://your-app.vercel.app/auth/confirm` to the Redirect URLs.
 4. Import this repository at [vercel.com/new](https://vercel.com/new) and add
    the environment variables from `.env.example` (Supabase values are under
-   **Project Settings → API**).
+   **Project Settings → API**). Optional: `OPENAI_API_KEY` lets admins have
+   the app create a picture for each training slide. Vercel uses a new or
+   changed variable from the next deploy on.
 5. Open the app and create your account. **The first person to sign up becomes
    the Admin** and is approved automatically. Everyone after that gets the
    default role (Team Member) and waits on the **Safety Team Members** page
