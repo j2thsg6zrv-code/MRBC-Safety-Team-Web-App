@@ -15,7 +15,9 @@ export function AuthForm({ mode, email }: { mode: "login" | "signup"; email?: st
         <Logo className="mb-3 h-12 text-slate-900" />
         <h1 className="mb-1 text-xl font-semibold">MRBC Safety Team</h1>
         <p className="mb-4 text-sm text-slate-600">
-          {mode === "login" ? "Sign in to your account." : "Create your account."}
+          {mode === "login"
+            ? "Sign in to your account."
+            : "Create your account. Sign-up is by invitation only, so use the email address your invite was sent to."}
         </p>
         <form action={action} className="space-y-3">
           {mode === "signup" && <Field label="Full name" name="full_name" required />}
@@ -46,7 +48,11 @@ export function AuthForm({ mode, email }: { mode: "login" | "signup"; email?: st
           {mode === "login" ? (
             <>New to the team? <Link className="text-blue-700 underline" href="/signup">Create an account</Link></>
           ) : (
-            <>Already have an account? <Link className="text-blue-700 underline" href="/login">Sign in</Link></>
+            <>
+              Already have an account? <Link className="text-blue-700 underline" href="/login">Sign in</Link>
+              <br />
+              Not invited yet? <Link className="text-blue-700 underline" href="/join">Ask to join the team</Link>
+            </>
           )}
         </p>
       </Card>
