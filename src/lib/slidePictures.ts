@@ -41,11 +41,19 @@ export async function savePicture(supabase: SupabaseClient, data: Blob, contentT
   return { path: error ? null : path, error };
 }
 
-/** Makes a picture that fits the slide, and saves it. Uses OpenAI when its key is set, otherwise Claude. */
-export async function createPicture(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">) {
+/**
+ * Makes a picture that fits the slide, and saves it. Uses OpenAI when its key
+ * is set, otherwise Claude. Claude also looks at `examples`, pictures already
+ * in the class, and matches their look.
+ */
+export async function createPicture(
+  supabase: SupabaseClient,
+  lesson: Pick<TrainingLesson, "title" | "body">,
+  examples: string[] = [],
+) {
   const k = keys();
   if (k.openai) return paintWithOpenAI(supabase, lesson, k.openai);
-  if (k.anthropic) return drawWithClaude(supabase, lesson, k.anthropic);
+  if (k.anthropic) return drawWithClaude(supabase, lesson, k.anthropic, examples);
   return { path: null, error: { message: "Couldn't create a picture: no API key is set." } };
 }
 
@@ -79,8 +87,44 @@ const DRAWING_RULES =
   "paths, gradients, groups and <text>. Short labels (a few words each) are fine where they help; no sentences. " +
   "No <script>, <foreignObject>, <image>, event attributes, links, or external references.";
 
-async function drawWithClaude(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">, key: string) {
+const PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
+
+/** Loads the class's existing pictures so Claude can see them: photos as images, drawings as their SVG code. */
+async function exampleBlocks(supabase: SupabaseClient, paths: string[]) {
+  const blocks: Anthropic.ContentBlockParam[] = [];
+  for (const path of paths) {
+    const { data } = await supabase.storage.from(PICTURE_BUCKET).download(path);
+    if (!data) continue;
+    const type = data.type || (path.endsWith(".svg") ? "image/svg+xml" : "");
+    const photoType = PHOTO_TYPES.find((t) => t === type);
+    if (photoType && data.size < 4_000_000) {
+      const b64 = Buffer.from(await data.arrayBuffer()).toString("base64");
+      blocks.push({ type: "image", source: { type: "base64", media_type: photoType, data: b64 } });
+    } else if (type === "image/svg+xml") {
+      const svg = await data.text();
+      // Long drawings only need their opening to show the palette and style.
+      blocks.push({ type: "text", text: `Picture from this class (SVG):\n${svg.slice(0, 12000)}` });
+    }
+  }
+  if (blocks.length) {
+    blocks.unshift({
+      type: "text",
+      text:
+        "These pictures are already in this class. Use them as inspiration: match their look, colors, " +
+        "level of detail and kind of picture so the new one fits with them, but draw this slide's own content.",
+    });
+  }
+  return blocks;
+}
+
+async function drawWithClaude(
+  supabase: SupabaseClient,
+  lesson: Pick<TrainingLesson, "title" | "body">,
+  key: string,
+  examples: string[],
+) {
   const client = new Anthropic({ apiKey: key });
+  const references = await exampleBlocks(supabase, examples);
   let svg = "";
   try {
     const response = await client.messages.create({
@@ -89,7 +133,7 @@ async function drawWithClaude(supabase: SupabaseClient, lesson: Pick<TrainingLes
       // Low effort keeps each drawing well inside the page's time limit.
       output_config: { effort: "low" },
       system: DRAWING_RULES,
-      messages: [{ role: "user", content: `${STYLE}\n\n${about(lesson)}` }],
+      messages: [{ role: "user", content: [...references, { type: "text", text: `${STYLE}\n\n${about(lesson)}` }] }],
     });
     if (response.stop_reason === "refusal") {
       return { path: null, error: { message: "Couldn't create a picture: Claude declined to draw this slide." } };

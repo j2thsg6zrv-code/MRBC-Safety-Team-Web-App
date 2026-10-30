@@ -40,11 +40,22 @@ export async function createLessonPicture(lessonId: string): Promise<{ error?: s
   const supabase = await createClient();
   const { data: lesson } = await supabase
     .from("training_lessons")
-    .select("id, class_id, title, body, image_path")
+    .select("id, class_id, title, body, image_path, position")
     .eq("id", lessonId)
     .single();
   if (!lesson) return { error: "That lesson no longer exists." };
-  const picture = await createPicture(supabase, lesson);
+  // Up to three pictures already in the class, nearest slides first, so new ones match them.
+  const { data: others } = await supabase
+    .from("training_lessons")
+    .select("image_path, position")
+    .eq("class_id", lesson.class_id)
+    .neq("id", lessonId)
+    .not("image_path", "is", null);
+  const examples = (others ?? [])
+    .sort((a, b) => Math.abs(a.position - lesson.position) - Math.abs(b.position - lesson.position))
+    .slice(0, 3)
+    .map((l) => l.image_path as string);
+  const picture = await createPicture(supabase, lesson, examples);
   if (picture.error || !picture.path) return { error: picture.error?.message ?? "Couldn't save the picture." };
   const { error } = await supabase.from("training_lessons").update({ image_path: picture.path }).eq("id", lessonId);
   if (error) return { error: error.message };
