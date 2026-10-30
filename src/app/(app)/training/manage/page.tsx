@@ -5,9 +5,10 @@ import { Button, Card, Field, PageHeader } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
+import { DeleteClassButton } from "@/components/DeleteClassButton";
 import { PowerPointImport } from "@/components/PowerPointImport";
 import type { DeckToSave } from "@/lib/pptx";
-import { formatWhen, PICTURE_PATH, type TrainingClass } from "@/lib/training";
+import { formatWhen, PICTURE_BUCKET, PICTURE_PATH, type TrainingClass } from "@/lib/training";
 
 async function createClass(formData: FormData) {
   "use server";
@@ -59,6 +60,23 @@ async function importPowerPoint(formData: FormData) {
   if (lessonError) finish(`/training/manage/${data.id}`, lessonError);
   const saved = `Imported ${deck.slides.length} slides as a draft. Review the text, add quiz questions, then approve it.`;
   redirect(`/training/manage/${data.id}?${new URLSearchParams({ saved })}`);
+}
+
+async function deleteClass(formData: FormData) {
+  "use server";
+  await requireAdmin();
+  const supabase = await createClient();
+  // The database checks the password against its stored hash and only lets
+  // admins delete; see delete_training_class in migration 0032.
+  const { data: pictures, error } = await supabase.rpc("delete_training_class", {
+    p_class: String(formData.get("id") ?? ""),
+    p_password: String(formData.get("password") ?? ""),
+  });
+  // A wrong password is our own message, not a bug for the Bug console.
+  if (error) finish("/training/manage", error.code === "P0001" ? { message: error.message } : error);
+  const paths = ((pictures ?? []) as string[]).filter((path) => PICTURE_PATH.test(path));
+  if (paths.length > 0) await supabase.storage.from(PICTURE_BUCKET).remove(paths);
+  finish("/training/manage", null, "Class deleted.");
 }
 
 export default async function ManageTrainingPage({ searchParams }: { searchParams: SearchParams }) {
@@ -116,6 +134,7 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
                 <Link href={`/training/manage/${c.id}`} className="text-sm text-blue-700 underline">
                   Edit
                 </Link>
+                <DeleteClassButton classId={c.id} title={c.title} action={deleteClass} />
               </div>
             </li>
           ))}
