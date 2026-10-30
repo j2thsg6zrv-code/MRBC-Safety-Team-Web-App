@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ErrorReporter } from "@/components/ErrorReporter";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { getTheme } from "@/lib/theme";
 
@@ -15,6 +16,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="en" data-theme={await getTheme()}>
       <body className="antialiased">
+        <ErrorReporter />
         <PullToRefresh />
         {children}
       </body>

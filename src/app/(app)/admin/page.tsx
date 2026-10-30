@@ -7,6 +7,7 @@ import { ShareLink } from "@/components/ShareLink";
 import { Status } from "@/components/Status";
 import { Button, Card, Field, PageHeader } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { formatDateTime } from "@/lib/dates";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { PERMISSIONS } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
@@ -94,11 +95,18 @@ function PermissionChecklist({ selected = [] }: { selected?: string[] }) {
 export default async function AdminPage({ searchParams }: { searchParams: SearchParams }) {
   await requireAdmin();
   const supabase = await createClient();
-  const [{ data: roleData }, { data: profiles }, { data: inviteData }] = await Promise.all([
+  const [{ data: roleData }, { data: profiles }, { data: inviteData }, { data: errorData, count: openErrors }] = await Promise.all([
     supabase.from("roles").select("*").order("is_admin", { ascending: false }).order("name"),
     supabase.from("profiles").select("id, full_name, email, active, role_id").order("full_name"),
     supabase.from("member_invites").select("email").is("accepted_at", null).order("email"),
+    supabase
+      .from("error_log")
+      .select("id, code, message, last_seen_at", { count: "exact" })
+      .is("fixed_at", null)
+      .order("last_seen_at", { ascending: false })
+      .limit(3),
   ]);
+  const latestErrors = (errorData ?? []) as { id: number; code: string; message: string; last_seen_at: string }[];
   const pendingInvites = (inviteData ?? []) as { email: string }[];
   const roles = (roleData ?? []) as Role[];
   const adminRoleIds = new Set(roles.filter((r) => r.is_admin).map((r) => r.id));
@@ -121,6 +129,35 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
         <JoinInterestList />
 
         <AutomaticMessages />
+
+        <Card>
+          <h2 className="mb-1 font-semibold">
+            Bug console
+            {!!openErrors && (
+              <span className="ml-2 rounded bg-red-50 px-1.5 text-sm font-medium text-red-700">{openErrors} not fixed</span>
+            )}
+          </h2>
+          <p className="mb-3 text-sm text-slate-600">
+            Whenever something doesn&apos;t work in the app, it&apos;s saved here with an error code and the details
+            needed to fix it.
+          </p>
+          {latestErrors.length > 0 && (
+            <ul className="mb-3 space-y-1 text-sm">
+              {latestErrors.map((e) => (
+                <li key={e.id} className="truncate">
+                  <span className="font-mono font-semibold">{e.code}</span>{" "}
+                  <span className="text-slate-500">{formatDateTime(e.last_seen_at)}</span> {e.message}
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href="/admin/errors"
+            className="inline-flex items-center rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-onaccent hover:brightness-90"
+          >
+            Open bug console
+          </Link>
+        </Card>
 
         <Card>
           <h2 className="mb-1 font-semibold">Reports</h2>
