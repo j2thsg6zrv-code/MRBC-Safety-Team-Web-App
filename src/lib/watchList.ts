@@ -18,6 +18,17 @@ export type WatchListEntry = {
   profiles?: { full_name: string } | null;
 };
 
+export type WatchListNote = {
+  id: string;
+  entry_id: string;
+  body: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+  author: { full_name: string } | null;
+  editor: { full_name: string } | null;
+};
+
 export const STATUS_LABELS = {
   watch: { label: "Watch for", className: "bg-amber-100 text-amber-900" },
   banned: { label: "Not allowed on property", className: "bg-red-100 text-red-800" },
