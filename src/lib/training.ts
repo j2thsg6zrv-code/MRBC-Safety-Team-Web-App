@@ -90,3 +90,13 @@ export async function pictureUrls(supabase: SupabaseClient, paths: (string | nul
   for (const d of data ?? []) if (d.path && d.signedUrl) urls[d.path] = d.signedUrl;
   return urls;
 }
+
+/** How long something took, e.g. "45 min", "2 hr 10 min" or "3 days". */
+export function formatDuration(fromTimestamp: string, toTimestamp: string) {
+  const minutes = Math.max(1, Math.round((Date.parse(toTimestamp) - Date.parse(fromTimestamp)) / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 ? `${hours} hr ${minutes % 60} min` : `${hours} hr`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "1 day" : `${days} days`;
+}
