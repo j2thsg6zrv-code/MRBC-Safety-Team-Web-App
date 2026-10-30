@@ -105,6 +105,8 @@ export async function readPptx(data: ArrayBuffer, fileName = ""): Promise<Import
     let title = "";
     const lines: string[] = [];
     for (const shape of elements(xml, "sp")) {
+      // Footers, slide numbers and dates repeat on every slide; leave them out.
+      if (/<ph[^>]*type="(?:ftr|sldNum|dt)"/.test(shape)) continue;
       const isTitle = /<ph[^>]*type="(?:title|ctrTitle)"/.test(shape);
       const text = paragraphs(shape);
       if (isTitle && !title) title = text.join(" ");
