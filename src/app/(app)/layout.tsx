@@ -42,6 +42,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       .is("contacted_at", null);
     toContact = count ?? 0;
   }
+  // Bugs & Requests no admin has looked at yet.
+  let newFeedback = 0;
+  if (user.isAdmin) {
+    const { count } = await supabase.from("feedback").select("id", { count: "exact", head: true }).eq("status", "new");
+    newFeedback = count ?? 0;
+  }
 
   const { data: chats } = await supabase.rpc("chat_overview");
   const unreadChats = ((chats ?? []) as { unread: number }[]).reduce((sum, c) => sum + c.unread, 0);
@@ -59,6 +65,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     { href: "/positions", label: "Positions" },
     { href: "/certifications", label: "My Certifications" },
     { href: "/share", label: "Share" },
+    { href: "/feedback", label: newFeedback ? `Bugs & Requests (${newFeedback} new)` : "Bugs & Requests" },
     ...(user.isAdmin ? [{ href: "/admin", label: toContact ? `Admin (${toContact} to contact)` : "Admin" }] : []),
     { href: "/profile", label: "My Profile" },
   ];
