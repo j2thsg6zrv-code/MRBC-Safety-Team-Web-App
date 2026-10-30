@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
 import { DeleteClassButton } from "@/components/DeleteClassButton";
+import { canWriteClasses } from "@/lib/classWriter";
 import { PowerPointImport } from "@/components/PowerPointImport";
 import type { DeckToSave } from "@/lib/pptx";
 import { formatWhen, PICTURE_BUCKET, PICTURE_PATH, type TrainingClass } from "@/lib/training";
@@ -58,6 +59,12 @@ async function importPowerPoint(formData: FormData) {
       })),
     );
   if (lessonError) finish(`/training/manage/${data.id}`, lessonError);
+  const minutes = Math.round(Number(formData.get("minutes")));
+  if (minutes > 0) await supabase.from("training_classes").update({ minutes }).eq("id", data.id);
+  if (formData.get("write") === "1" && minutes >= 5) {
+    const saved = `Imported ${deck.slides.length} slides. Claude is now writing the class; keep this page open.`;
+    redirect(`/training/manage/${data.id}?${new URLSearchParams({ saved, write: "1", minutes: String(minutes) })}`);
+  }
   const saved = `Imported ${deck.slides.length} slides as a draft. Review the text, add quiz questions, then approve it.`;
   redirect(`/training/manage/${data.id}?${new URLSearchParams({ saved })}`);
 }
@@ -160,7 +167,7 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
           it when it&apos;s ready. Charts and drawn shapes aren&apos;t carried over, so describe them in the text if they
           matter.
         </p>
-        <PowerPointImport action={importPowerPoint} />
+        <PowerPointImport action={importPowerPoint} canWrite={canWriteClasses()} />
       </Card>
 
       <h2 className="mb-2 font-semibold">Recent completions</h2>

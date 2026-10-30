@@ -14,6 +14,9 @@ function keys() {
   };
 }
 
+/** The Anthropic API key, if one is set. */
+export const anthropicKey = () => keys().anthropic;
+
 /** Whether the app can create pictures: an OpenAI or Anthropic API key is set on the server. */
 export const canCreatePictures = () => {
   const k = keys();

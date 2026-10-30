@@ -35,7 +35,13 @@ async function shrink(picture: SlidePicture): Promise<{ blob: Blob; ext: string 
  * to storage, and sends only the text to the server, so decks full of
  * pictures aren't stopped by the upload size limit.
  */
-export function PowerPointImport({ action }: { action: (formData: FormData) => Promise<void> }) {
+export function PowerPointImport({
+  action,
+  canWrite,
+}: {
+  action: (formData: FormData) => Promise<void>;
+  canWrite: boolean;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
 
@@ -72,6 +78,8 @@ export function PowerPointImport({ action }: { action: (formData: FormData) => P
       setProgress("Saving the class…");
       const data = new FormData();
       data.set("deck", JSON.stringify(toSave));
+      data.set("minutes", String(formData.get("minutes") ?? ""));
+      if (formData.get("write")) data.set("write", "1");
       await action(data);
     } catch (e) {
       unstable_rethrow(e);
@@ -94,7 +102,26 @@ export function PowerPointImport({ action }: { action: (formData: FormData) => P
           onChange={() => setError(null)}
         />
       </label>
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-slate-700">Class length (minutes)</span>
+        <input
+          type="number"
+          name="minutes"
+          min={5}
+          max={240}
+          defaultValue={30}
+          required
+          className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+        />
+      </label>
       <Button type="submit" pendingLabel="Importing…">Import as draft</Button>
+      {canWrite && (
+        <label className="flex w-full items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" name="write" value="1" defaultChecked />
+          Have Claude write the slide titles, reader scripts, check questions, and a 10-question final test to fit this
+          length
+        </label>
+      )}
       {progress && <p className="w-full text-sm text-slate-600">{progress}</p>}
       {error && <p className="w-full text-sm text-red-700">{error}</p>}
     </form>
