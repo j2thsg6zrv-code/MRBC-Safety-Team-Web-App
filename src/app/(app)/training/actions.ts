@@ -43,17 +43,22 @@ async function makeLessonPicture(lessonId: string, note: string) {
     .eq("id", lessonId)
     .single();
   if (!lesson) return { error: "That lesson no longer exists." };
-  // Up to three pictures already in the class, nearest slides first, so new ones match them.
-  const { data: others } = await supabase
+  // Pictures already saved, so new ones match them: up to three from this class (nearest slides first)
+  // and one from each other class, up to six. More would slow each picture past the time limit.
+  const { data: saved } = await supabase
     .from("training_lessons")
-    .select("image_path, position")
-    .eq("class_id", lesson.class_id)
+    .select("class_id, image_path, position")
     .neq("id", lessonId)
     .not("image_path", "is", null);
-  const examples = (others ?? [])
+  const sameClass = (saved ?? [])
+    .filter((l) => l.class_id === lesson.class_id)
     .sort((a, b) => Math.abs(a.position - lesson.position) - Math.abs(b.position - lesson.position))
-    .slice(0, 3)
-    .map((l) => l.image_path as string);
+    .slice(0, 3);
+  const otherClasses = new Map<string, string>();
+  for (const l of saved ?? []) {
+    if (l.class_id !== lesson.class_id && !otherClasses.has(l.class_id)) otherClasses.set(l.class_id, l.image_path as string);
+  }
+  const examples = [...sameClass.map((l) => l.image_path as string), ...[...otherClasses.values()].slice(0, 6)];
   const picture = await createPicture(supabase, lesson, examples, note.trim().slice(0, 300));
   if (picture.error || !picture.path) return { error: picture.error?.message ?? "Couldn't save the picture." };
   return { path: picture.path };

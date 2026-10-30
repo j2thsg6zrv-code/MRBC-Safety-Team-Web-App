@@ -44,7 +44,7 @@ export async function savePicture(supabase: SupabaseClient, data: Blob, contentT
 /**
  * Makes a picture that fits the slide, and saves it. Uses OpenAI when its key
  * is set, otherwise Claude. Claude also looks at `examples`, pictures already
- * in the class, and matches their look. `note` is what an admin wants changed
+ * saved in this class and others, and matches their look. `note` is what an admin wants changed
  * when regenerating a picture.
  */
 export async function createPicture(
@@ -113,8 +113,9 @@ async function exampleBlocks(supabase: SupabaseClient, paths: string[]) {
     blocks.unshift({
       type: "text",
       text:
-        "These pictures are already in this class. Use them as inspiration: match their look, colors, " +
-        "level of detail and kind of picture so the new one fits with them, but draw this slide's own content.",
+        "These pictures are already saved in this class and the church's other classes. Use them as inspiration: " +
+        "match their look, colors, level of detail and kind of picture so the new one fits with them, but draw " +
+        "this slide's own content.",
     });
   }
   return blocks;
