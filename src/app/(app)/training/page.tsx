@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Status } from "@/components/Status";
+import { TeamTrainingProgress, type AttemptRow, type ProgressRow } from "@/components/TeamTrainingProgress";
 import { Card, PageHeader } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import type { SearchParams } from "@/lib/forms";
@@ -28,6 +29,31 @@ export default async function TrainingPage({ searchParams }: { searchParams: Sea
   const titles = new Map(list.map((c) => [c.id, c.title]));
   const visible = list.filter((c) => c.status === "approved");
   const drafts = list.filter((c) => c.status === "draft");
+
+  // Everyone's progress, for admins only. The database also only returns other
+  // members' progress and quiz tries to admins. Loaded one after another, not
+  // all at once, to keep the page simple to stream.
+  let team: Parameters<typeof TeamTrainingProgress>[0] | null = null;
+  if (user.isAdmin && visible.length > 0) {
+    const { data: members } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("active", true)
+      .order("full_name");
+    const { data: progress } = await supabase
+      .from("training_progress")
+      .select("profile_id, class_id, done_through, current_slide, quiz_answers, started_at, completed_at, updated_at");
+    const { data: allAttempts } = await supabase.from("training_attempts").select("profile_id, class_id, passed, created_at");
+    const { data: lessons } = await supabase.from("training_lessons").select("class_id");
+    const { data: questions } = await supabase.from("training_questions").select("class_id");
+    const count = (rows: { class_id: string }[] | null, id: string) => (rows ?? []).filter((r) => r.class_id === id).length;
+    team = {
+      classes: visible.map((c) => ({ id: c.id, title: c.title, lessons: count(lessons, c.id), questions: count(questions, c.id) })),
+      members: members ?? [],
+      progress: (progress ?? []) as ProgressRow[],
+      attempts: (allAttempts ?? []) as AttemptRow[],
+    };
+  }
 
   return (
     <>
@@ -83,6 +109,8 @@ export default async function TrainingPage({ searchParams }: { searchParams: Sea
           );
         })}
       </div>
+
+      {team && <TeamTrainingProgress {...team} />}
 
       {user.isAdmin && drafts.length > 0 && (
         <>
