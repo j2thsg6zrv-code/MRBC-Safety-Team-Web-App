@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { PhotoViewer } from "@/components/PhotoViewer";
 import { Status } from "@/components/Status";
 import { Button, Card, PageHeader } from "@/components/ui";
 import { readWatchListForm, WatchListForm } from "@/components/WatchListForm";
@@ -90,8 +91,7 @@ export default async function WatchListEntryPage({
         <Card>
           <div className="flex flex-col gap-4 sm:flex-row">
             {photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photo} alt={entry.full_name} className="w-full max-w-48 rounded object-cover" />
+              <PhotoViewer src={photo} alt={entry.full_name} className="w-full max-w-48 rounded object-cover" />
             ) : (
               <div className="flex h-48 w-36 items-center justify-center rounded bg-slate-100 text-sm text-slate-400">No photo</div>
             )}
