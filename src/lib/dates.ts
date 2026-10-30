@@ -39,3 +39,15 @@ export function formatTimeRange(start: string, end: string | null): string {
 export function localDate(timestamp: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date(timestamp));
 }
+
+/** A database timestamp in church-local time, e.g. "Oct 30, 3:41 PM". */
+export function formatDateTime(timestamp: string): string {
+  return new Date(timestamp).toLocaleString("en-US", {
+    timeZone: TIME_ZONE,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
