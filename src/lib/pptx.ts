@@ -34,11 +34,14 @@ function elements(xml: string, name: string) {
   return xml.match(new RegExp(`<${name}(?:\\s[^>]*[^/])?>[\\s\\S]*?<\\/${name}>`, "g")) ?? [];
 }
 
+// A short copyright line ("Copyright 2017 © Full Armor Church") repeats on every slide; it isn't content.
+const COPYRIGHT = /^(?=.{0,160}$).*(\bcopyright\b|©)/i;
+
 /** The text of each paragraph in a piece of simplified slide XML. */
 function paragraphs(xml: string) {
   return elements(xml, "p")
     .map((p) => decode(elements(p, "t").map((t) => t.replace(/<[^>]*>/g, "")).join("")).trim())
-    .filter(Boolean);
+    .filter((t) => t && !COPYRIGHT.test(t));
 }
 
 /** Turns a target like "../slides/slide3.xml" relative to a folder into a zip path. */
