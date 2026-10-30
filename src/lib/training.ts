@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PICTURE_BUCKET = "training";
 
+// Only pictures this app saved, so a crafted path can't touch other files.
+export const PICTURE_PATH = /^slides\/[0-9a-f-]{36}\.(svg|webp|png|jpg|jpeg|gif)$/;
+
 export type TrainingClass = {
   id: string;
   title: string;

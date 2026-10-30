@@ -1,15 +1,43 @@
 "use client";
 
+import { unstable_rethrow } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/Button";
-import { readPptx } from "@/lib/pptx";
+import { readPptx, type DeckToSave, type SlidePicture } from "@/lib/pptx";
+import { createClient } from "@/lib/supabase/client";
+import { PICTURE_BUCKET } from "@/lib/training";
+
+const MAX_WIDTH = 1600;
+
+/** Big photos are shrunk to a sensible size for a slide so lessons load quickly. */
+async function shrink(picture: SlidePicture): Promise<{ blob: Blob; ext: string }> {
+  const original = new Blob([picture.data as BlobPart], { type: picture.type });
+  if (picture.data.length < 500_000 || picture.ext === "gif") return { blob: original, ext: picture.ext };
+  try {
+    const bitmap = await createImageBitmap(original);
+    const scale = Math.min(1, MAX_WIDTH / bitmap.width);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, "image/jpeg", 0.85));
+    return blob && blob.size < original.size ? { blob, ext: "jpg" } : { blob: original, ext: picture.ext };
+  } catch {
+    return { blob: original, ext: picture.ext };
+  }
+}
 
 /**
- * Reads the PowerPoint in the browser and sends only its text to the server,
- * so decks full of pictures aren't stopped by the upload size limit.
+ * Reads the PowerPoint in the browser, uploads each slide's picture straight
+ * to storage, and sends only the text to the server, so decks full of
+ * pictures aren't stopped by the upload size limit.
  */
 export function PowerPointImport({ action }: { action: (formData: FormData) => Promise<void> }) {
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
 
   const submit = async (formData: FormData) => {
     setError(null);
@@ -20,15 +48,37 @@ export function PowerPointImport({ action }: { action: (formData: FormData) => P
         "Only .pptx files can be imported. In PowerPoint, use File → Save As → PowerPoint Presentation (.pptx).",
       );
     }
-    let deck;
     try {
-      deck = await readPptx(await file.arrayBuffer());
+      setProgress("Reading the slides…");
+      const deck = await readPptx(await file.arrayBuffer());
+      const supabase = createClient();
+      const withPictures = deck.slides.filter((s) => s.picture).length;
+      let uploaded = 0;
+      const toSave: DeckToSave = { title: deck.title, summary: deck.summary, slides: [] };
+      for (const slide of deck.slides) {
+        let image_path: string | undefined;
+        if (slide.picture) {
+          setProgress(`Saving picture ${++uploaded} of ${withPictures}…`);
+          const { blob, ext } = await shrink(slide.picture);
+          const path = `slides/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from(PICTURE_BUCKET)
+            .upload(path, blob, { contentType: blob.type });
+          // A picture that won't save shouldn't stop the import; the slide just has no picture.
+          if (!uploadError) image_path = path;
+        }
+        toSave.slides.push({ title: slide.title, body: slide.body, image_path });
+      }
+      setProgress("Saving the class…");
+      const data = new FormData();
+      data.set("deck", JSON.stringify(toSave));
+      await action(data);
     } catch (e) {
-      return setError(e instanceof Error && e.message ? e.message : "That file couldn't be read as a PowerPoint.");
+      unstable_rethrow(e);
+      setError(e instanceof Error && e.message ? e.message : "That file couldn't be imported.");
+    } finally {
+      setProgress(null);
     }
-    const data = new FormData();
-    data.set("deck", JSON.stringify(deck));
-    await action(data);
   };
 
   return (
@@ -45,6 +95,7 @@ export function PowerPointImport({ action }: { action: (formData: FormData) => P
         />
       </label>
       <Button type="submit" pendingLabel="Importing…">Import as draft</Button>
+      {progress && <p className="w-full text-sm text-slate-600">{progress}</p>}
       {error && <p className="w-full text-sm text-red-700">{error}</p>}
     </form>
   );
