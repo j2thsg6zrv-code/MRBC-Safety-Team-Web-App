@@ -399,8 +399,8 @@ export default async function EditClassPage({
         {canCreate ? (
           <>
             <p className="mb-3 text-sm text-slate-600">
-              The app can create a picture for each slide that fits what it covers, in the same friendly style. You can
-              replace any picture below with a new one or your own.
+              The app can create a picture for each slide that shows what its text describes, in the same clean
+              style. You can replace any picture below with a new one or your own.
             </p>
             <CreateAllPictures lessonIds={lessonList.filter((l) => !l.image_path).map((l) => l.id)} />
           </>

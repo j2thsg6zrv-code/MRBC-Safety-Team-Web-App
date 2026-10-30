@@ -22,15 +22,15 @@ export const canCreatePictures = () => {
 
 // The same look for every slide, so a class feels like one set of pictures.
 const STYLE =
-  "A friendly, simple flat cartoon illustration with soft warm colors and clean shapes, " +
-  "in the style of a church volunteer training booklet. Diverse, kind-looking adults in everyday clothes " +
-  "at a small church. Calm and reassuring: no weapons, blood, injuries, fire damage or frightening scenes. " +
-  "No words, letters, signs with writing, logos, or real people.";
+  "A clean, realistic-style illustration, not a cartoon: natural proportions, muted true-to-life colors, " +
+  "simple flat shading, like a figure in a professional safety training manual. It shows exactly what the " +
+  "slide's text describes, such as the scene, the steps, or the equipment it talks about. " +
+  "Calm and respectful: no blood, injuries, or frightening scenes, and no logos or real people.";
 
 function about(lesson: Pick<TrainingLesson, "title" | "body">) {
-  // The title and the start of the text say what the slide is about.
-  const text = lesson.body.replace(/\*\*/g, "").replace(/^- /gm, "").replace(/\s+/g, " ").slice(0, 400);
-  return `The picture illustrates a training slide titled "${lesson.title}". The slide says: ${text}`;
+  // The whole slide, so the picture matches what it actually teaches.
+  const text = lesson.body.replace(/\*\*/g, "").replace(/\s+/g, " ").slice(0, 2500);
+  return `Slide title: "${lesson.title}"\nSlide text: ${text}`;
 }
 
 /** Saves a picture to storage and returns its path. */
@@ -41,11 +41,19 @@ export async function savePicture(supabase: SupabaseClient, data: Blob, contentT
   return { path: error ? null : path, error };
 }
 
-/** Makes a picture that fits the slide, and saves it. Uses OpenAI when its key is set, otherwise Claude. */
-export async function createPicture(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">) {
+/**
+ * Makes a picture that fits the slide, and saves it. Uses OpenAI when its key
+ * is set, otherwise Claude. Claude also looks at `examples`, pictures already
+ * in the class, and matches their look.
+ */
+export async function createPicture(
+  supabase: SupabaseClient,
+  lesson: Pick<TrainingLesson, "title" | "body">,
+  examples: string[] = [],
+) {
   const k = keys();
   if (k.openai) return paintWithOpenAI(supabase, lesson, k.openai);
-  if (k.anthropic) return drawWithClaude(supabase, lesson, k.anthropic);
+  if (k.anthropic) return drawWithClaude(supabase, lesson, k.anthropic, examples);
   return { path: null, error: { message: "Couldn't create a picture: no API key is set." } };
 }
 
@@ -55,7 +63,7 @@ async function paintWithOpenAI(supabase: SupabaseClient, lesson: Pick<TrainingLe
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1",
-      prompt: `${STYLE}\n\n${about(lesson)}`,
+      prompt: `${STYLE} No words or letters.\n\n${about(lesson)}`,
       size: "1536x1024",
       quality: "medium",
       output_format: "webp",
@@ -72,13 +80,51 @@ async function paintWithOpenAI(supabase: SupabaseClient, lesson: Pick<TrainingLe
 }
 
 const DRAWING_RULES =
-  "You draw illustrations as SVG code. Reply with only one complete <svg> element and nothing else: " +
+  "You draw illustrations for church safety team training slides as SVG code. Read the slide and pick the one " +
+  "picture that best shows what it teaches: a scene of the situation, a step-by-step diagram, or a simple visual " +
+  "of the key points. Reply with only one complete <svg> element and nothing else: " +
   'viewBox="0 0 1200 800", no width or height attributes, a full-bleed background, and only basic shapes, ' +
-  "paths, gradients and groups. No <text>, <script>, <foreignObject>, <image>, event attributes, links, " +
-  "or external references. Draw people as simple rounded figures with friendly faces.";
+  "paths, gradients, groups and <text>. Short labels (a few words each) are fine where they help; no sentences. " +
+  "No <script>, <foreignObject>, <image>, event attributes, links, or external references.";
 
-async function drawWithClaude(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">, key: string) {
+const PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
+
+/** Loads the class's existing pictures so Claude can see them: photos as images, drawings as their SVG code. */
+async function exampleBlocks(supabase: SupabaseClient, paths: string[]) {
+  const blocks: Anthropic.ContentBlockParam[] = [];
+  for (const path of paths) {
+    const { data } = await supabase.storage.from(PICTURE_BUCKET).download(path);
+    if (!data) continue;
+    const type = data.type || (path.endsWith(".svg") ? "image/svg+xml" : "");
+    const photoType = PHOTO_TYPES.find((t) => t === type);
+    if (photoType && data.size < 4_000_000) {
+      const b64 = Buffer.from(await data.arrayBuffer()).toString("base64");
+      blocks.push({ type: "image", source: { type: "base64", media_type: photoType, data: b64 } });
+    } else if (type === "image/svg+xml") {
+      const svg = await data.text();
+      // Long drawings only need their opening to show the palette and style.
+      blocks.push({ type: "text", text: `Picture from this class (SVG):\n${svg.slice(0, 12000)}` });
+    }
+  }
+  if (blocks.length) {
+    blocks.unshift({
+      type: "text",
+      text:
+        "These pictures are already in this class. Use them as inspiration: match their look, colors, " +
+        "level of detail and kind of picture so the new one fits with them, but draw this slide's own content.",
+    });
+  }
+  return blocks;
+}
+
+async function drawWithClaude(
+  supabase: SupabaseClient,
+  lesson: Pick<TrainingLesson, "title" | "body">,
+  key: string,
+  examples: string[],
+) {
   const client = new Anthropic({ apiKey: key });
+  const references = await exampleBlocks(supabase, examples);
   let svg = "";
   try {
     const response = await client.messages.create({
@@ -87,7 +133,7 @@ async function drawWithClaude(supabase: SupabaseClient, lesson: Pick<TrainingLes
       // Low effort keeps each drawing well inside the page's time limit.
       output_config: { effort: "low" },
       system: DRAWING_RULES,
-      messages: [{ role: "user", content: `${STYLE}\n\n${about(lesson)}` }],
+      messages: [{ role: "user", content: [...references, { type: "text", text: `${STYLE}\n\n${about(lesson)}` }] }],
     });
     if (response.stop_reason === "refusal") {
       return { path: null, error: { message: "Couldn't create a picture: Claude declined to draw this slide." } };
