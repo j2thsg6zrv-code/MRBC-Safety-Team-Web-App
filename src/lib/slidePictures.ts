@@ -1,8 +1,24 @@
+import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PICTURE_BUCKET, type TrainingLesson } from "@/lib/training";
 
-/** Whether the app can create pictures: an OpenAI API key is set on the server. */
-export const canCreatePictures = () => !!process.env.OPENAI_API_KEY;
+// Two ways to make pictures: OpenAI paints a cartoon, or Claude draws a flat
+// illustration as an SVG. An Anthropic key saved as OPENAI_API_KEY counts as
+// an Anthropic key, so either name works for it.
+function keys() {
+  const openai = process.env.OPENAI_API_KEY?.trim();
+  const isAnthropicKey = openai?.startsWith("sk-ant-");
+  return {
+    openai: isAnthropicKey ? undefined : openai,
+    anthropic: process.env.ANTHROPIC_API_KEY?.trim() || (isAnthropicKey ? openai : undefined),
+  };
+}
+
+/** Whether the app can create pictures: an OpenAI or Anthropic API key is set on the server. */
+export const canCreatePictures = () => {
+  const k = keys();
+  return !!(k.openai || k.anthropic);
+};
 
 // The same look for every slide, so a class feels like one set of pictures.
 const STYLE =
@@ -11,28 +27,35 @@ const STYLE =
   "at a small church. Calm and reassuring: no weapons, blood, injuries, fire damage or frightening scenes. " +
   "No words, letters, signs with writing, logos, or real people.";
 
-function prompt(lesson: Pick<TrainingLesson, "title" | "body">) {
+function about(lesson: Pick<TrainingLesson, "title" | "body">) {
   // The title and the start of the text say what the slide is about.
-  const about = lesson.body.replace(/\*\*/g, "").replace(/^- /gm, "").replace(/\s+/g, " ").slice(0, 400);
-  return `${STYLE}\n\nThe picture illustrates a training slide titled "${lesson.title}". The slide says: ${about}`;
+  const text = lesson.body.replace(/\*\*/g, "").replace(/^- /gm, "").replace(/\s+/g, " ").slice(0, 400);
+  return `The picture illustrates a training slide titled "${lesson.title}". The slide says: ${text}`;
 }
 
 /** Saves a picture to storage and returns its path. */
 export async function savePicture(supabase: SupabaseClient, data: Blob, contentType: string) {
-  const ext = contentType.split("/")[1]?.replace("jpeg", "jpg") || "png";
+  const ext = contentType === "image/svg+xml" ? "svg" : contentType.split("/")[1]?.replace("jpeg", "jpg") || "png";
   const path = `slides/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(PICTURE_BUCKET).upload(path, data, { contentType });
   return { path: error ? null : path, error };
 }
 
-/** Asks OpenAI for a picture that fits the slide, and saves it. */
+/** Makes a picture that fits the slide, and saves it. Uses OpenAI when its key is set, otherwise Claude. */
 export async function createPicture(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">) {
+  const k = keys();
+  if (k.openai) return paintWithOpenAI(supabase, lesson, k.openai);
+  if (k.anthropic) return drawWithClaude(supabase, lesson, k.anthropic);
+  return { path: null, error: { message: "Couldn't create a picture: no API key is set." } };
+}
+
+async function paintWithOpenAI(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">, key: string) {
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
-    headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1",
-      prompt: prompt(lesson),
+      prompt: `${STYLE}\n\n${about(lesson)}`,
       size: "1536x1024",
       quality: "medium",
       output_format: "webp",
@@ -46,4 +69,52 @@ export async function createPicture(supabase: SupabaseClient, lesson: Pick<Train
     return { path: null, error: { message: `Couldn't create a picture: ${reason}` } };
   }
   return savePicture(supabase, new Blob([Buffer.from(b64, "base64")], { type: "image/webp" }), "image/webp");
+}
+
+const DRAWING_RULES =
+  "You draw illustrations as SVG code. Reply with only one complete <svg> element and nothing else: " +
+  'viewBox="0 0 1200 800", no width or height attributes, a full-bleed background, and only basic shapes, ' +
+  "paths, gradients and groups. No <text>, <script>, <foreignObject>, <image>, event attributes, links, " +
+  "or external references. Draw people as simple rounded figures with friendly faces.";
+
+async function drawWithClaude(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">, key: string) {
+  const client = new Anthropic({ apiKey: key });
+  let svg = "";
+  try {
+    const response = await client.messages.create({
+      model: process.env.ANTHROPIC_IMAGE_MODEL || "claude-opus-5-5",
+      max_tokens: 16000,
+      // Low effort keeps each drawing well inside the page's time limit.
+      output_config: { effort: "low" },
+      system: DRAWING_RULES,
+      messages: [{ role: "user", content: `${STYLE}\n\n${about(lesson)}` }],
+    });
+    if (response.stop_reason === "refusal") {
+      return { path: null, error: { message: "Couldn't create a picture: Claude declined to draw this slide." } };
+    }
+    for (const block of response.content) if (block.type === "text") svg += block.text;
+  } catch (e) {
+    const reason =
+      e instanceof Anthropic.AuthenticationError
+        ? "the Anthropic API key isn't valid."
+        : e instanceof Anthropic.APIError
+          ? e.message
+          : "the request failed.";
+    return { path: null, error: { message: `Couldn't create a picture: ${reason}` } };
+  }
+  const clean = cleanSvg(svg);
+  if (!clean) return { path: null, error: { message: "Couldn't create a picture: the drawing came back incomplete." } };
+  return savePicture(supabase, new Blob([clean], { type: "image/svg+xml" }), "image/svg+xml");
+}
+
+/** Keeps just the <svg> element and strips anything that could run or load other content. */
+function cleanSvg(text: string) {
+  const start = text.indexOf("<svg");
+  const end = text.lastIndexOf("</svg>");
+  if (start < 0 || end < start) return null;
+  let svg = text.slice(start, end + 6);
+  svg = svg.replace(/<(script|foreignObject|image|a)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<(script|foreignObject|image|a)\b[^>]*\/?>/gi, "");
+  svg = svg.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*')/gi, "").replace(/(href|xlink:href)\s*=\s*("(?!#)[^"]*"|'(?!#)[^']*')/gi, "");
+  if (!/xmlns=/.test(svg.slice(0, 200))) svg = svg.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"');
+  return svg;
 }
