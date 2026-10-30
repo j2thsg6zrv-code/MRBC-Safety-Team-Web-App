@@ -169,7 +169,7 @@ export default async function ClassPage({
                 <img
                   src={pictures[l.image_path]}
                   alt=""
-                  className="mb-4 aspect-[3/2] w-full rounded-lg border border-slate-200 object-cover"
+                  className="mx-auto mb-4 block h-auto w-2/3 rounded-lg border border-slate-200 object-contain"
                 />
               )}
               <LessonBody body={l.body} />
