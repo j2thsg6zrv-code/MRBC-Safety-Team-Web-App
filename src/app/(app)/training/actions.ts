@@ -30,10 +30,10 @@ export async function saveProgress(classId: string, progress: Partial<SavedProgr
 
 /**
  * Creates an AI picture for one lesson and puts it on the slide, replacing
- * any picture it had. Admins only. Called one slide at a time by the class
+ * any picture it had. `note` says what to change when regenerating. Admins only. Called one slide at a time by the class
  * editor, since each picture takes a while to make.
  */
-export async function createLessonPicture(lessonId: string): Promise<{ error?: string }> {
+export async function createLessonPicture(lessonId: string, note = ""): Promise<{ error?: string }> {
   const user = await getCurrentUser();
   if (!user.isAdmin) return { error: "Only admins can create pictures." };
   if (!canCreatePictures()) return { error: "Picture creation isn't set up yet: add ANTHROPIC_API_KEY or OPENAI_API_KEY in Vercel." };
@@ -55,7 +55,7 @@ export async function createLessonPicture(lessonId: string): Promise<{ error?: s
     .sort((a, b) => Math.abs(a.position - lesson.position) - Math.abs(b.position - lesson.position))
     .slice(0, 3)
     .map((l) => l.image_path as string);
-  const picture = await createPicture(supabase, lesson, examples);
+  const picture = await createPicture(supabase, lesson, examples, note.trim().slice(0, 300));
   if (picture.error || !picture.path) return { error: picture.error?.message ?? "Couldn't save the picture." };
   const { error } = await supabase.from("training_lessons").update({ image_path: picture.path }).eq("id", lessonId);
   if (error) return { error: error.message };

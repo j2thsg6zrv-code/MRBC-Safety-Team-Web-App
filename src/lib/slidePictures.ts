@@ -44,26 +44,29 @@ export async function savePicture(supabase: SupabaseClient, data: Blob, contentT
 /**
  * Makes a picture that fits the slide, and saves it. Uses OpenAI when its key
  * is set, otherwise Claude. Claude also looks at `examples`, pictures already
- * in the class, and matches their look.
+ * in the class, and matches their look. `note` is what an admin wants changed
+ * when regenerating a picture.
  */
 export async function createPicture(
   supabase: SupabaseClient,
   lesson: Pick<TrainingLesson, "title" | "body">,
   examples: string[] = [],
+  note = "",
 ) {
   const k = keys();
-  if (k.openai) return paintWithOpenAI(supabase, lesson, k.openai);
-  if (k.anthropic) return drawWithClaude(supabase, lesson, k.anthropic, examples);
+  const request = note ? `${about(lesson)}\n\nThe last picture for this slide wasn't right. Change this: ${note}` : about(lesson);
+  if (k.openai) return paintWithOpenAI(supabase, request, k.openai);
+  if (k.anthropic) return drawWithClaude(supabase, request, k.anthropic, examples);
   return { path: null, error: { message: "Couldn't create a picture: no API key is set." } };
 }
 
-async function paintWithOpenAI(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">, key: string) {
+async function paintWithOpenAI(supabase: SupabaseClient, request: string, key: string) {
   const res = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1",
-      prompt: `${STYLE} No words or letters.\n\n${about(lesson)}`,
+      prompt: `${STYLE} No words or letters.\n\n${request}`,
       size: "1536x1024",
       quality: "medium",
       output_format: "webp",
@@ -119,7 +122,7 @@ async function exampleBlocks(supabase: SupabaseClient, paths: string[]) {
 
 async function drawWithClaude(
   supabase: SupabaseClient,
-  lesson: Pick<TrainingLesson, "title" | "body">,
+  request: string,
   key: string,
   examples: string[],
 ) {
@@ -133,7 +136,7 @@ async function drawWithClaude(
       // Low effort keeps each drawing well inside the page's time limit.
       output_config: { effort: "low" },
       system: DRAWING_RULES,
-      messages: [{ role: "user", content: [...references, { type: "text", text: `${STYLE}\n\n${about(lesson)}` }] }],
+      messages: [{ role: "user", content: [...references, { type: "text", text: `${STYLE}\n\n${request}` }] }],
     });
     if (response.stop_reason === "refusal") {
       return { path: null, error: { message: "Couldn't create a picture: Claude declined to draw this slide." } };
