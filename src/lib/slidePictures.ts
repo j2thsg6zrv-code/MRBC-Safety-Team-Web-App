@@ -22,15 +22,15 @@ export const canCreatePictures = () => {
 
 // The same look for every slide, so a class feels like one set of pictures.
 const STYLE =
-  "A friendly, simple flat cartoon illustration with soft warm colors and clean shapes, " +
-  "in the style of a church volunteer training booklet. Diverse, kind-looking adults in everyday clothes " +
-  "at a small church. Calm and reassuring: no weapons, blood, injuries, fire damage or frightening scenes. " +
-  "No words, letters, signs with writing, logos, or real people.";
+  "A clean, realistic-style illustration, not a cartoon: natural proportions, muted true-to-life colors, " +
+  "simple flat shading, like a figure in a professional safety training manual. It shows exactly what the " +
+  "slide's text describes, such as the scene, the steps, or the equipment it talks about. " +
+  "Calm and respectful: no blood, injuries, or frightening scenes, and no logos or real people.";
 
 function about(lesson: Pick<TrainingLesson, "title" | "body">) {
-  // The title and the start of the text say what the slide is about.
-  const text = lesson.body.replace(/\*\*/g, "").replace(/^- /gm, "").replace(/\s+/g, " ").slice(0, 400);
-  return `The picture illustrates a training slide titled "${lesson.title}". The slide says: ${text}`;
+  // The whole slide, so the picture matches what it actually teaches.
+  const text = lesson.body.replace(/\*\*/g, "").replace(/\s+/g, " ").slice(0, 2500);
+  return `Slide title: "${lesson.title}"\nSlide text: ${text}`;
 }
 
 /** Saves a picture to storage and returns its path. */
@@ -55,7 +55,7 @@ async function paintWithOpenAI(supabase: SupabaseClient, lesson: Pick<TrainingLe
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1",
-      prompt: `${STYLE}\n\n${about(lesson)}`,
+      prompt: `${STYLE} No words or letters.\n\n${about(lesson)}`,
       size: "1536x1024",
       quality: "medium",
       output_format: "webp",
@@ -72,10 +72,12 @@ async function paintWithOpenAI(supabase: SupabaseClient, lesson: Pick<TrainingLe
 }
 
 const DRAWING_RULES =
-  "You draw illustrations as SVG code. Reply with only one complete <svg> element and nothing else: " +
+  "You draw illustrations for church safety team training slides as SVG code. Read the slide and pick the one " +
+  "picture that best shows what it teaches: a scene of the situation, a step-by-step diagram, or a simple visual " +
+  "of the key points. Reply with only one complete <svg> element and nothing else: " +
   'viewBox="0 0 1200 800", no width or height attributes, a full-bleed background, and only basic shapes, ' +
-  "paths, gradients and groups. No <text>, <script>, <foreignObject>, <image>, event attributes, links, " +
-  "or external references. Draw people as simple rounded figures with friendly faces.";
+  "paths, gradients, groups and <text>. Short labels (a few words each) are fine where they help; no sentences. " +
+  "No <script>, <foreignObject>, <image>, event attributes, links, or external references.";
 
 async function drawWithClaude(supabase: SupabaseClient, lesson: Pick<TrainingLesson, "title" | "body">, key: string) {
   const client = new Anthropic({ apiKey: key });
