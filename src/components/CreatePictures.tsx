@@ -50,30 +50,56 @@ export function CreateAllPictures({ lessonIds }: { lessonIds: string[] }) {
   );
 }
 
-/** Replaces one slide's picture with a new AI picture. */
+/**
+ * Makes a new AI picture for one slide. When the slide already has one, this
+ * regenerates it, optionally with a note on what to change.
+ */
 export function NewPictureButton({ lessonId, hasPicture }: { lessonId: string; hasPicture: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
   const run = async () => {
     setBusy(true);
     setError("");
-    const result = await createLessonPicture(lessonId).catch(() => ({ error: "The request failed." }));
+    const result = await createLessonPicture(lessonId, note).catch(() => ({ error: "The request failed." }));
     setBusy(false);
     if (result.error) setError(result.error);
-    else router.refresh();
+    else {
+      setNote("");
+      router.refresh();
+    }
   };
   return (
-    <span className="inline-flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={run}
-        disabled={busy}
-        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
-      >
-        {busy ? "Creating… (up to two minutes)" : hasPicture ? "✨ New AI picture" : "✨ Create AI picture"}
-      </button>
-      {error && <span className="text-sm text-red-700">{error}</span>}
+    <span className="grid gap-2">
+      {hasPicture && (
+        <input
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          // This sits inside the lesson form; Enter should regenerate, not save the lesson.
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (!busy) run();
+            }
+          }}
+          maxLength={300}
+          placeholder="Optional: what should be different?"
+          className="rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+        />
+      )}
+      <span className="inline-flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={run}
+          disabled={busy}
+          className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+        >
+          {busy ? "Creating… (up to two minutes)" : hasPicture ? "🔄 Regenerate picture" : "✨ Create AI picture"}
+        </button>
+        {error && <span className="text-sm text-red-700">{error}</span>}
+      </span>
     </span>
   );
 }
