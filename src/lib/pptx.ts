@@ -66,7 +66,7 @@ function relationships(xml: string) {
 const PICTURE_TYPES: Record<string, SlidePicture["ext"]> = { png: "png", jpg: "jpg", jpeg: "jpg", gif: "gif", webp: "webp" };
 
 /**
- * Reads a PowerPoint (.pptx) file: each slide's title, its text as bullet
+ * Reads a PowerPoint (.pptx) or slide show (.ppsx) file: each slide's title, its text as bullet
  * points, its speaker notes, and its biggest picture (photos placed on the
  * slide or its background). Charts, shapes and the theme's logos aren't
  * carried over.
@@ -81,7 +81,7 @@ export async function readPptx(data: ArrayBuffer, fileName = ""): Promise<Import
   const mainPath = resolve("", mainTarget);
   const folder = mainPath.replace(/\/?[^/]+$/, "");
   const presentation = await read(mainPath);
-  if (!presentation) throw new Error("That doesn't look like a PowerPoint (.pptx) file.");
+  if (!presentation) throw new Error("That doesn't look like a PowerPoint (.pptx or .ppsx) file.");
   const rels = relationships((await read(`${folder}/_rels/${mainPath.split("/").pop()}.rels`)) ?? "");
 
   // Slides in the order the presentation lists them, or by file name if that list can't be read.
@@ -167,7 +167,7 @@ export async function readPptx(data: ArrayBuffer, fileName = ""): Promise<Import
 
   // Slides saved as pictures have no text, so the file's name names the class.
   if (slides.every((s) => !s.title && !s.body)) {
-    const title = fileName.replace(/\.pptx$/i, "").replace(/_+/g, " ").trim() || "Imported class";
+    const title = fileName.replace(/\.(pptx|ppsx)$/i, "").replace(/_+/g, " ").trim() || "Imported class";
     return { title, summary: null, slides: slides.map((s, i) => ({ ...s, title: `Slide ${i + 1}` })) };
   }
 

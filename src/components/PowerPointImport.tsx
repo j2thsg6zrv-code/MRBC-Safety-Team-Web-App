@@ -43,9 +43,9 @@ export function PowerPointImport({ action }: { action: (formData: FormData) => P
     setError(null);
     const file = formData.get("file");
     if (!(file instanceof File) || file.size === 0) return setError("Choose a PowerPoint file first.");
-    if (!file.name.toLowerCase().endsWith(".pptx")) {
+    if (!/\.(pptx|ppsx)$/i.test(file.name)) {
       return setError(
-        "Only .pptx files can be imported. In PowerPoint, use File → Save As → PowerPoint Presentation (.pptx).",
+        "Only .pptx and .ppsx files can be imported. In PowerPoint, use File → Save As → PowerPoint Presentation (.pptx).",
       );
     }
     try {
@@ -84,11 +84,11 @@ export function PowerPointImport({ action }: { action: (formData: FormData) => P
   return (
     <form action={submit} className="flex flex-wrap items-end gap-3">
       <label className="block min-w-64 flex-1">
-        <span className="mb-1 block text-sm font-medium text-slate-700">PowerPoint file (.pptx)</span>
+        <span className="mb-1 block text-sm font-medium text-slate-700">PowerPoint file (.pptx or .ppsx)</span>
         <input
           type="file"
           name="file"
-          accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+          accept=".pptx,.ppsx,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.presentationml.slideshow"
           required
           className="block w-full text-sm"
           onChange={() => setError(null)}
