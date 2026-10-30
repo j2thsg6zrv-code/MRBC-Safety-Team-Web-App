@@ -17,8 +17,8 @@ import {
   type TrainingQuestion,
 } from "@/lib/training";
 
-// Creating an AI picture can take most of a minute.
-export const maxDuration = 60;
+// Creating an AI picture can take a minute or two.
+export const maxDuration = 120;
 
 const path = (id: string) => `/training/manage/${id}`;
 
@@ -399,15 +399,16 @@ export default async function EditClassPage({
         {canCreate ? (
           <>
             <p className="mb-3 text-sm text-slate-600">
-              The app can create a cartoon for each slide that fits what it covers, in the same friendly style. You can
+              The app can create a picture for each slide that fits what it covers, in the same friendly style. You can
               replace any picture below with a new one or your own.
             </p>
             <CreateAllPictures lessonIds={lessonList.filter((l) => !l.image_path).map((l) => l.id)} />
           </>
         ) : (
           <p className="text-sm text-slate-600">
-            Upload a picture on any lesson below. To have the app create cartoons for every slide, add an OpenAI API key
-            as <code>OPENAI_API_KEY</code> in the app&apos;s Vercel settings.
+            Upload a picture on any lesson below. To have the app create pictures for every slide, add an Anthropic API
+            key as <code>ANTHROPIC_API_KEY</code> (or an OpenAI key as <code>OPENAI_API_KEY</code>) in the app&apos;s
+            Vercel settings.
           </p>
         )}
       </Card>

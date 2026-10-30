@@ -36,7 +36,7 @@ export async function saveProgress(classId: string, progress: Partial<SavedProgr
 export async function createLessonPicture(lessonId: string): Promise<{ error?: string }> {
   const user = await getCurrentUser();
   if (!user.isAdmin) return { error: "Only admins can create pictures." };
-  if (!canCreatePictures()) return { error: "Picture creation isn't set up yet: add OPENAI_API_KEY in Vercel." };
+  if (!canCreatePictures()) return { error: "Picture creation isn't set up yet: add ANTHROPIC_API_KEY or OPENAI_API_KEY in Vercel." };
   const supabase = await createClient();
   const { data: lesson } = await supabase
     .from("training_lessons")

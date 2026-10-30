@@ -6,7 +6,7 @@ import { createLessonPicture } from "@/app/(app)/training/actions";
 
 /**
  * Creates AI pictures for every slide in a class that doesn't have one, one
- * slide at a time, showing progress. Each picture takes up to a minute.
+ * slide at a time, showing progress. Each picture takes up to two minutes.
  */
 export function CreateAllPictures({ lessonIds }: { lessonIds: string[] }) {
   const router = useRouter();
@@ -38,7 +38,7 @@ export function CreateAllPictures({ lessonIds }: { lessonIds: string[] }) {
           ? `Creating picture ${done + 1} of ${lessonIds.length}…`
           : `Create pictures for ${lessonIds.length} slide${lessonIds.length === 1 ? "" : "s"} without one`}
       </button>
-      {running && <p className="text-sm text-slate-600">Keep this page open. Each picture takes up to a minute.</p>}
+      {running && <p className="text-sm text-slate-600">Keep this page open. Each picture takes up to two minutes.</p>}
       {errors.length > 0 && (
         <ul className="list-disc pl-5 text-sm text-red-700">
           {errors.map((e) => (
@@ -71,7 +71,7 @@ export function NewPictureButton({ lessonId, hasPicture }: { lessonId: string; h
         disabled={busy}
         className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
       >
-        {busy ? "Creating… (up to a minute)" : hasPicture ? "✨ New AI picture" : "✨ Create AI picture"}
+        {busy ? "Creating… (up to two minutes)" : hasPicture ? "✨ New AI picture" : "✨ Create AI picture"}
       </button>
       {error && <span className="text-sm text-red-700">{error}</span>}
     </span>
