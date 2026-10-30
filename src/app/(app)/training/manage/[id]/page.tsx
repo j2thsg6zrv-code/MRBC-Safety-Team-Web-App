@@ -3,9 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CreateAllPictures, NewPictureButton } from "@/components/CreatePictures";
 import { Status } from "@/components/Status";
+import { WriteClass } from "@/components/WriteClass";
 import { Button, Card, Field, PageHeader, Select, TextArea } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
+import { canWriteClasses } from "@/lib/classWriter";
 import { canCreatePictures, savePicture } from "@/lib/slidePictures";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -18,7 +20,8 @@ import {
 } from "@/lib/training";
 
 // Creating an AI picture can take a minute or two.
-export const maxDuration = 120;
+// Writing a slide with Claude, with web searches, can take a few minutes.
+export const maxDuration = 300;
 
 const path = (id: string) => `/training/manage/${id}`;
 
@@ -303,6 +306,8 @@ export default async function EditClassPage({
 }) {
   await requireAdmin();
   const { id } = await params;
+  // The import sends ?write=1&minutes=N to start writing the class right away.
+  const query = (await searchParams) as { write?: string; minutes?: string };
   const supabase = await createClient();
   const [{ data: cls }, { data: lessons }, { data: questions }, { data: quals }, { data: others }, { data: certs }] =
     await Promise.all([
@@ -392,6 +397,30 @@ export default async function EditClassPage({
             </Button>
           </div>
         </form>
+      </Card>
+
+      <Card className="mb-6">
+        <h2 className="mb-2 font-semibold">Write the class with Claude</h2>
+        {canWriteClasses() ? (
+          <>
+            <p className="mb-3 text-sm text-slate-600">
+              Claude reads each slide&apos;s picture and text, checks the facts online, and writes a title, a script for
+              the reader to read aloud, and a check-for-understanding question for every slide, then a 10-question final
+              test. The scripts are sized to fit the class length you enter. This replaces what the slides have now.
+            </p>
+            <WriteClass
+              classId={c.id}
+              lessonIds={lessonList.map((l) => l.id)}
+              defaultMinutes={Number(query.minutes) || c.minutes || 30}
+              autoStart={query.write === "1"}
+            />
+          </>
+        ) : (
+          <p className="text-sm text-slate-600">
+            To have Claude write the scripts, check questions, and final test, add an Anthropic API key as{" "}
+            <code>ANTHROPIC_API_KEY</code> in the app&apos;s Vercel settings.
+          </p>
+        )}
       </Card>
 
       <Card className="mb-6">

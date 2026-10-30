@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
+import { canWriteClasses, WORDS_PER_MINUTE, writeSlide, writeTest } from "@/lib/classWriter";
 import { canCreatePictures, createPicture } from "@/lib/slidePictures";
 import { createClient } from "@/lib/supabase/server";
 import { PICTURE_BUCKET, PICTURE_PATH } from "@/lib/training";
@@ -114,4 +115,89 @@ export async function discardLessonPicture(path: string): Promise<void> {
   const { data: inUse } = await supabase.from("training_lessons").select("id").eq("image_path", path).limit(1);
   if (inUse?.length) return;
   await supabase.storage.from(PICTURE_BUCKET).remove([path]);
+}
+
+const NO_WRITER = "Writing classes isn't set up yet: add ANTHROPIC_API_KEY in Vercel.";
+
+/**
+ * Has Claude write one slide's title, reader script, and check question,
+ * replacing what the slide had. `minutes` is the whole class's length, shared
+ * across its slides. Admins only. Called one slide at a time by "Write the
+ * class" in the class editor.
+ */
+export async function writeLessonScript(lessonId: string, minutes: number): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user.isAdmin) return { error: "Only admins can write classes." };
+  if (!canWriteClasses()) return { error: NO_WRITER };
+  const supabase = await createClient();
+  const { data: lesson } = await supabase
+    .from("training_lessons")
+    .select("id, class_id, title, body, image_path")
+    .eq("id", lessonId)
+    .single();
+  if (!lesson) return { error: "That lesson no longer exists." };
+  const [{ data: cls }, { data: all }] = await Promise.all([
+    supabase.from("training_classes").select("title").eq("id", lesson.class_id).single(),
+    supabase.from("training_lessons").select("id, title").eq("class_id", lesson.class_id).order("position").order("created_at"),
+  ]);
+  const outline = (all ?? []).map((l) => l.title as string);
+  const index = (all ?? []).findIndex((l) => l.id === lessonId);
+  const words = Math.max(40, Math.round((Math.max(5, minutes) * WORDS_PER_MINUTE) / Math.max(1, outline.length)));
+  try {
+    const written = await writeSlide(supabase, { classTitle: cls?.title ?? "", outline, lesson, index, words });
+    const check = written.check.prompt ? written.check : null;
+    const { error } = await supabase
+      .from("training_lessons")
+      .update({
+        title: written.title,
+        body: written.script,
+        check_prompt: check?.prompt ?? null,
+        check_choices: check?.choices ?? null,
+        check_answer: check?.answer ?? null,
+        check_explanation: check?.explanation || null,
+      })
+      .eq("id", lessonId);
+    if (error) return { error: error.message };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Couldn't write this slide." };
+  }
+  return {};
+}
+
+/**
+ * Has Claude write the class's 10-question final test from its slides,
+ * replacing any test it had, and sets the class length. Admins only.
+ */
+export async function writeClassTest(classId: string, minutes: number): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user.isAdmin) return { error: "Only admins can write classes." };
+  if (!canWriteClasses()) return { error: NO_WRITER };
+  const supabase = await createClient();
+  const [{ data: cls }, { data: lessons }] = await Promise.all([
+    supabase.from("training_classes").select("title").eq("id", classId).single(),
+    supabase.from("training_lessons").select("title, body").eq("class_id", classId).order("position").order("created_at"),
+  ]);
+  if (!cls) return { error: "That class no longer exists." };
+  let questions;
+  try {
+    questions = await writeTest(cls.title, lessons ?? []);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Couldn't write the test." };
+  }
+  // Answers are removed with their questions.
+  const { error: deleteError } = await supabase.from("training_questions").delete().eq("class_id", classId);
+  if (deleteError) return { error: deleteError.message };
+  const { data: saved, error } = await supabase
+    .from("training_questions")
+    .insert(questions.map((q, i) => ({ class_id: classId, position: i + 1, prompt: q.prompt, choices: q.choices })))
+    .select("id, position");
+  if (error || !saved) return { error: error?.message ?? "Couldn't save the test." };
+  const { error: answerError } = await supabase
+    .from("training_answers")
+    .insert(saved.map((s) => ({ question_id: s.id, correct_index: questions[s.position - 1].answer })));
+  if (answerError) return { error: answerError.message };
+  await supabase.from("training_classes").update({ minutes: Math.round(minutes) }).eq("id", classId);
+  revalidatePath(`/training/manage/${classId}`);
+  revalidatePath(`/training/${classId}`);
+  return {};
 }
