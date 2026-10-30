@@ -17,7 +17,7 @@ import {
   type TrainingQuestion,
 } from "@/lib/training";
 
-// Creating an AI picture can take most of a minute.
+// Creating an AI picture can take a minute or two.
 export const maxDuration = 120;
 
 const path = (id: string) => `/training/manage/${id}`;
