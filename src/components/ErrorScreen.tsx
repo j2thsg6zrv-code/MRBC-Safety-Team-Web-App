@@ -13,6 +13,21 @@ export function ErrorScreen({ error, reset }: { error: Error & { digest?: string
   const [code, setCode] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
+    // A page left open across an update asks for code that no longer exists.
+    // Reload once to get the new version instead of showing this screen.
+    const stale =
+      /ChunkLoadError|Loading (CSS )?chunk|dynamically imported module/i.test(error.message) ||
+      /\/_next\/static\/chunks\/webpack-/.test(error.stack?.split("\n").slice(0, 2).join("\n") ?? "");
+    try {
+      const last = Number(sessionStorage.getItem("staleReload") || 0);
+      if (stale && Date.now() - last > 30_000) {
+        sessionStorage.setItem("staleReload", String(Date.now()));
+        window.location.reload();
+        return;
+      }
+    } catch {
+      // No session storage: just show the screen.
+    }
     let cancelled = false;
     reportBrowserError(error, "The page crashed and showed the error screen").then((c) => {
       if (!cancelled) setCode(c);
