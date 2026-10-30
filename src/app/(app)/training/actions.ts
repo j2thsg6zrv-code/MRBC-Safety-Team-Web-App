@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth";
 import { canCreatePictures, createPicture } from "@/lib/slidePictures";
 import { createClient } from "@/lib/supabase/server";
-import { PICTURE_BUCKET } from "@/lib/training";
+import { PICTURE_BUCKET, PICTURE_PATH } from "@/lib/training";
 
 export type SavedProgress = {
   done_through: number;
@@ -27,9 +27,6 @@ export async function saveProgress(classId: string, progress: Partial<SavedProgr
       { onConflict: "profile_id,class_id" },
     );
 }
-
-// Only pictures this app saved, so a crafted path can't touch other files.
-const PICTURE_PATH = /^slides\/[0-9a-f-]{36}\.(svg|webp|png|jpg|jpeg|gif)$/;
 
 /** Makes an AI picture for a lesson and saves it to storage, without putting it on the slide yet. */
 async function makeLessonPicture(lessonId: string, note: string) {

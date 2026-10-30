@@ -1,7 +1,11 @@
 import JSZip from "jszip";
 
-export type ImportedSlide = { title: string; body: string };
+/** A picture from a slide, ready to upload. */
+export type SlidePicture = { data: Uint8Array; ext: "png" | "jpg" | "gif" | "webp"; type: string };
+export type ImportedSlide = { title: string; body: string; picture?: SlidePicture };
 export type ImportedDeck = { title: string; summary: string | null; slides: ImportedSlide[] };
+/** What the browser sends to the server: the text, plus where each slide's picture was uploaded. */
+export type DeckToSave = { title: string; summary: string | null; slides: { title: string; body: string; image_path?: string }[] };
 
 function decode(text: string) {
   return text
@@ -43,9 +47,13 @@ function relationships(xml: string) {
   return map;
 }
 
+const PICTURE_TYPES: Record<string, SlidePicture["ext"]> = { png: "png", jpg: "jpg", jpeg: "jpg", gif: "gif", webp: "webp" };
+
 /**
  * Reads a PowerPoint (.pptx) file: each slide's title, its text as bullet
- * points, and its speaker notes. Pictures and charts are not carried over.
+ * points, its speaker notes, and its biggest picture (photos placed on the
+ * slide or its background). Charts, shapes and the theme's logos aren't
+ * carried over.
  */
 export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
   const zip = await JSZip.loadAsync(data);
@@ -82,9 +90,24 @@ export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
 
     // Speaker notes become plain paragraphs under the bullet points.
     const notes: string[] = [];
+    let picture: SlidePicture | undefined;
     const slideRels = await read(path.replace(/slides\/(slide\d+\.xml)$/, "slides/_rels/$1.rels"));
     if (slideRels) {
-      for (const { target, type } of relationships(slideRels).values()) {
+      const slideRelMap = relationships(slideRels);
+      // The biggest picture the slide actually shows becomes the lesson picture.
+      const used = new Set([...xml.matchAll(/r:embed="([^"]+)"/g)].map((m) => m[1]));
+      for (const id of used) {
+        const rel = slideRelMap.get(id);
+        if (!rel?.type.endsWith("/image")) continue;
+        const ext = PICTURE_TYPES[rel.target.split(".").pop()?.toLowerCase() ?? ""];
+        const file = ext && zip.file(resolve(path.replace(/\/[^/]+$/, ""), rel.target));
+        if (!file) continue;
+        const data = await file.async("uint8array");
+        if (data.length > (picture?.data.length ?? 20_000)) {
+          picture = { data, ext, type: ext === "jpg" ? "image/jpeg" : `image/${ext}` };
+        }
+      }
+      for (const { target, type } of slideRelMap.values()) {
         if (!type.endsWith("/notesSlide")) continue;
         const notesXml = await read(resolve(path.replace(/\/[^/]+$/, ""), target));
         if (!notesXml) continue;
@@ -94,10 +117,11 @@ export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
       }
     }
 
-    if (!title && !lines.length && !notes.length) continue;
+    if (!title && !lines.length && !notes.length && !picture) continue;
     slides.push({
       title: title || lines.shift() || `Slide ${slides.length + 1}`,
       body: [...lines.map((l) => `- ${l}`), ...notes].join("\n"),
+      picture,
     });
   }
 
@@ -107,7 +131,7 @@ export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
   let title = "Imported class";
   let summary: string | null = null;
   const first = slides[0];
-  if (slides.length > 1 && first.body.split("\n").filter(Boolean).length <= 2) {
+  if (slides.length > 1 && !first.picture && first.body.split("\n").filter(Boolean).length <= 2) {
     slides.shift();
     title = first.title;
     summary = first.body.replace(/^- /gm, "").replace(/\n/g, " ").trim() || null;

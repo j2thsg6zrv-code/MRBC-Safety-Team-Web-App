@@ -6,8 +6,8 @@ import { requireAdmin } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
 import { PowerPointImport } from "@/components/PowerPointImport";
-import type { ImportedDeck } from "@/lib/pptx";
-import { formatWhen, type TrainingClass } from "@/lib/training";
+import type { DeckToSave } from "@/lib/pptx";
+import { formatWhen, PICTURE_PATH, type TrainingClass } from "@/lib/training";
 
 async function createClass(formData: FormData) {
   "use server";
@@ -27,7 +27,7 @@ async function importPowerPoint(formData: FormData) {
   "use server";
   await requireAdmin();
   // The browser reads the .pptx (see PowerPointImport) and sends just the text.
-  let deck: ImportedDeck;
+  let deck: DeckToSave;
   try {
     deck = JSON.parse(String(formData.get("deck") ?? ""));
   } catch {
@@ -46,7 +46,16 @@ async function importPowerPoint(formData: FormData) {
   if (error || !data) finish("/training/manage", error);
   const { error: lessonError } = await supabase
     .from("training_lessons")
-    .insert(deck.slides.map((slide, i) => ({ class_id: data.id, position: i + 1, title: String(slide.title), body: String(slide.body ?? "") })));
+    .insert(
+      deck.slides.map((slide, i) => ({
+        class_id: data.id,
+        position: i + 1,
+        title: String(slide.title),
+        body: String(slide.body ?? ""),
+        // Pictures the browser uploaded from the slides.
+        image_path: slide.image_path && PICTURE_PATH.test(slide.image_path) ? slide.image_path : null,
+      })),
+    );
   if (lessonError) finish(`/training/manage/${data.id}`, lessonError);
   const saved = `Imported ${deck.slides.length} slides as a draft. Review the text, add quiz questions, then approve it.`;
   redirect(`/training/manage/${data.id}?${new URLSearchParams({ saved })}`);
@@ -127,9 +136,10 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
       <Card className="mb-8">
         <h2 className="mb-1 font-semibold">Import a PowerPoint</h2>
         <p className="mb-3 text-sm text-slate-600">
-          Each slide becomes a lesson slide: its title, its text as bullet points, and its speaker notes. The class is
-          saved as a draft so you can review it, add a quiz, and approve it when it&apos;s ready. Pictures and charts
-          aren&apos;t carried over, so add a video link or describe them in the text if they matter.
+          Each slide becomes a lesson slide: its title, its text as bullet points, its speaker notes, and its biggest
+          picture as the slide&apos;s picture. The class is saved as a draft so you can review it, add a quiz, and approve
+          it when it&apos;s ready. Charts and drawn shapes aren&apos;t carried over, so describe them in the text if they
+          matter.
         </p>
         <PowerPointImport action={importPowerPoint} />
       </Card>
