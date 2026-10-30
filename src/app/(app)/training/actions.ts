@@ -28,12 +28,11 @@ export async function saveProgress(classId: string, progress: Partial<SavedProgr
     );
 }
 
-/**
- * Creates an AI picture for one lesson and puts it on the slide, replacing
- * any picture it had. `note` says what to change when regenerating. Admins only. Called one slide at a time by the class
- * editor, since each picture takes a while to make.
- */
-export async function createLessonPicture(lessonId: string, note = ""): Promise<{ error?: string }> {
+// Only pictures this app saved, so a crafted path can't touch other files.
+const PICTURE_PATH = /^slides\/[0-9a-f-]{36}\.(svg|webp|png|jpg|jpeg|gif)$/;
+
+/** Makes an AI picture for a lesson and saves it to storage, without putting it on the slide yet. */
+async function makeLessonPicture(lessonId: string, note: string) {
   const user = await getCurrentUser();
   if (!user.isAdmin) return { error: "Only admins can create pictures." };
   if (!canCreatePictures()) return { error: "Picture creation isn't set up yet: add ANTHROPIC_API_KEY or OPENAI_API_KEY in Vercel." };
@@ -57,10 +56,60 @@ export async function createLessonPicture(lessonId: string, note = ""): Promise<
     .map((l) => l.image_path as string);
   const picture = await createPicture(supabase, lesson, examples, note.trim().slice(0, 300));
   if (picture.error || !picture.path) return { error: picture.error?.message ?? "Couldn't save the picture." };
-  const { error } = await supabase.from("training_lessons").update({ image_path: picture.path }).eq("id", lessonId);
+  return { path: picture.path };
+}
+
+/**
+ * Creates an AI picture for one lesson and puts it on the slide, replacing
+ * any picture it had. Admins only. Called one slide at a time by "Create
+ * pictures" in the class editor, since each picture takes a while to make.
+ */
+export async function createLessonPicture(lessonId: string): Promise<{ error?: string }> {
+  const made = await makeLessonPicture(lessonId, "");
+  if (!made.path) return { error: made.error };
+  return applyLessonPicture(lessonId, made.path);
+}
+
+/**
+ * Creates an AI picture for one lesson for the admin to look at first.
+ * `note` says what to change when regenerating. Nothing changes on the slide
+ * until applyLessonPicture; discardLessonPicture throws the picture away.
+ */
+export async function previewLessonPicture(
+  lessonId: string,
+  note = "",
+): Promise<{ error?: string; path?: string; url?: string }> {
+  const made = await makeLessonPicture(lessonId, note);
+  if (!made.path) return { error: made.error };
+  const supabase = await createClient();
+  const { data } = await supabase.storage.from(PICTURE_BUCKET).createSignedUrl(made.path, 60 * 60);
+  if (!data) return { error: "The picture was made but couldn't be shown." };
+  return { path: made.path, url: data.signedUrl };
+}
+
+/** Puts a previewed picture on the slide, replacing any picture it had. Admins only. */
+export async function applyLessonPicture(lessonId: string, path: string): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user.isAdmin) return { error: "Only admins can change pictures." };
+  if (!PICTURE_PATH.test(path)) return { error: "That isn't a picture from this app." };
+  const supabase = await createClient();
+  const { data: lesson } = await supabase.from("training_lessons").select("class_id, image_path").eq("id", lessonId).single();
+  if (!lesson) return { error: "That lesson no longer exists." };
+  const { error } = await supabase.from("training_lessons").update({ image_path: path }).eq("id", lessonId);
   if (error) return { error: error.message };
-  if (lesson.image_path) await supabase.storage.from(PICTURE_BUCKET).remove([lesson.image_path]);
+  if (lesson.image_path && lesson.image_path !== path) await supabase.storage.from(PICTURE_BUCKET).remove([lesson.image_path]);
   revalidatePath(`/training/manage/${lesson.class_id}`);
   revalidatePath(`/training/${lesson.class_id}`);
   return {};
+}
+
+/** Throws away a previewed picture the admin didn't want. Admins only. */
+export async function discardLessonPicture(path: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user.isAdmin || !PICTURE_PATH.test(path)) return;
+  const supabase = await createClient();
+  // Never remove a picture that a slide is using.
+  const { data: inUse } = await supabase.from("training_lessons").select("id").eq("image_path", path).limit(1);
+  if (inUse?.length) return;
+  await supabase.storage.from(PICTURE_BUCKET).remove([path]);
 }
