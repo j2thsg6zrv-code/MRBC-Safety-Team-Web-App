@@ -66,13 +66,11 @@ async function deleteClass(formData: FormData) {
   "use server";
   await requireAdmin();
   const supabase = await createClient();
-  // The database checks the password against its stored hash and only lets
-  // admins delete; see delete_training_class in migration 0032.
+  // The database only lets people on class_deleters delete; see migration 0033.
   const { data: pictures, error } = await supabase.rpc("delete_training_class", {
     p_class: String(formData.get("id") ?? ""),
-    p_password: String(formData.get("password") ?? ""),
   });
-  // A wrong password is our own message, not a bug for the Bug console.
+  // A "not allowed" note is our own message, not a bug for the Bug console.
   if (error) finish("/training/manage", error.code === "P0001" ? { message: error.message } : error);
   const paths = ((pictures ?? []) as string[]).filter((path) => PICTURE_PATH.test(path));
   if (paths.length > 0) await supabase.storage.from(PICTURE_BUCKET).remove(paths);
@@ -80,9 +78,9 @@ async function deleteClass(formData: FormData) {
 }
 
 export default async function ManageTrainingPage({ searchParams }: { searchParams: SearchParams }) {
-  await requireAdmin();
+  const user = await requireAdmin();
   const supabase = await createClient();
-  const [{ data: classes }, { data: passes }] = await Promise.all([
+  const [{ data: classes }, { data: passes }, { data: deleter }] = await Promise.all([
     supabase.from("training_classes").select("*, certifications(name)").order("sort_order").order("title"),
     supabase
       .from("training_attempts")
@@ -90,7 +88,9 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
       .eq("passed", true)
       .order("created_at", { ascending: false })
       .limit(25),
+    supabase.from("class_deleters").select("profile_id").eq("profile_id", user.id).maybeSingle(),
   ]);
+  const canDelete = !!deleter;
   const list = (classes ?? []) as (TrainingClass & { certifications: { name: string } | null })[];
   const recent = (passes ?? []) as unknown as {
     id: string;
@@ -134,7 +134,7 @@ export default async function ManageTrainingPage({ searchParams }: { searchParam
                 <Link href={`/training/manage/${c.id}`} className="text-sm text-blue-700 underline">
                   Edit
                 </Link>
-                <DeleteClassButton classId={c.id} title={c.title} action={deleteClass} />
+                {canDelete && <DeleteClassButton classId={c.id} title={c.title} action={deleteClass} />}
               </div>
             </li>
           ))}

@@ -3,10 +3,7 @@
 import { useRef } from "react";
 import { Button } from "@/components/Button";
 
-/**
- * A Delete link that opens a box asking for the class delete password. The
- * password is checked on the server; nothing about it lives in the browser.
- */
+/** A Delete link that opens a box asking "are you sure?" before deleting. */
 export function DeleteClassButton({
   classId,
   title,
@@ -34,16 +31,6 @@ export function DeleteClassButton({
             This removes the class, its slides and quiz, and everyone&apos;s progress and pass history for it. It
             can&apos;t be undone. Certifications people already earned stay on their records.
           </p>
-          <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Delete password</span>
-            <input
-              type="password"
-              name="password"
-              required
-              autoComplete="off"
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-base focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-            />
-          </label>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => dialog.current?.close()}>
               Cancel
