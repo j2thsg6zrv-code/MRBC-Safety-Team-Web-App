@@ -50,7 +50,7 @@ export function PowerPointImport({ action }: { action: (formData: FormData) => P
     }
     try {
       setProgress("Reading the slides…");
-      const deck = await readPptx(await file.arrayBuffer());
+      const deck = await readPptx(await file.arrayBuffer(), file.name);
       const supabase = createClient();
       const withPictures = deck.slides.filter((s) => s.picture).length;
       let uploaded = 0;

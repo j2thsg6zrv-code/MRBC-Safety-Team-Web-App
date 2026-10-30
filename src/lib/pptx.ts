@@ -18,10 +18,26 @@ function decode(text: string) {
     .replace(/&amp;/g, "&");
 }
 
-/** The text of each paragraph (<a:p>) in a piece of slide XML. */
+/**
+ * Drops element prefixes (<a:p> becomes <p>) so files from other apps, which
+ * name their prefixes differently, read the same, and drops the fallback copy
+ * of content saved twice for older PowerPoints.
+ */
+function simplify(xml: string) {
+  return xml
+    .replace(/<mc:Fallback>[\s\S]*?<\/mc:Fallback>/g, "")
+    .replace(/<(\/?)[A-Za-z][\w.-]*:/g, "<$1");
+}
+
+/** Every element named `name` in simplified XML, with its contents. */
+function elements(xml: string, name: string) {
+  return xml.match(new RegExp(`<${name}(?:\\s[^>]*[^/])?>[\\s\\S]*?<\\/${name}>`, "g")) ?? [];
+}
+
+/** The text of each paragraph in a piece of simplified slide XML. */
 function paragraphs(xml: string) {
-  return (xml.match(/<a:p>[\s\S]*?<\/a:p>|<a:p [\s\S]*?<\/a:p>/g) ?? [])
-    .map((p) => decode((p.match(/<a:t>([\s\S]*?)<\/a:t>/g) ?? []).map((t) => t.replace(/<\/?a:t>/g, "")).join("")).trim())
+  return elements(xml, "p")
+    .map((p) => decode(elements(p, "t").map((t) => t.replace(/<[^>]*>/g, "")).join("")).trim())
     .filter(Boolean);
 }
 
@@ -55,36 +71,48 @@ const PICTURE_TYPES: Record<string, SlidePicture["ext"]> = { png: "png", jpg: "j
  * slide or its background). Charts, shapes and the theme's logos aren't
  * carried over.
  */
-export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
+export async function readPptx(data: ArrayBuffer, fileName = ""): Promise<ImportedDeck> {
   const zip = await JSZip.loadAsync(data);
   const read = async (path: string) => (await zip.file(path)?.async("string")) ?? null;
 
-  const presentation = await read("ppt/presentation.xml");
-  const presRels = await read("ppt/_rels/presentation.xml.rels");
-  if (!presentation || !presRels) throw new Error("That doesn't look like a PowerPoint (.pptx) file.");
+  // The main part is usually ppt/presentation.xml, but the package says where.
+  const rootRels = relationships((await read("_rels/.rels")) ?? "");
+  const mainTarget = [...rootRels.values()].find((r) => r.type.endsWith("/officeDocument"))?.target ?? "ppt/presentation.xml";
+  const mainPath = resolve("", mainTarget);
+  const folder = mainPath.replace(/\/?[^/]+$/, "");
+  const presentation = await read(mainPath);
+  if (!presentation) throw new Error("That doesn't look like a PowerPoint (.pptx) file.");
+  const rels = relationships((await read(`${folder}/_rels/${mainPath.split("/").pop()}.rels`)) ?? "");
 
-  const rels = relationships(presRels);
-  const slidePaths = (presentation.match(/<p:sldId [^>]*>/g) ?? [])
-    .map((tag) => tag.match(/r:id="([^"]+)"/)?.[1])
+  // Slides in the order the presentation lists them, or by file name if that list can't be read.
+  let slidePaths = (simplify(presentation).match(/<sldId\s[^>]*>/g) ?? [])
+    .map((tag) => tag.match(/\s\w+:id="([^"]+)"/)?.[1])
     .map((id) => (id ? rels.get(id)?.target : undefined))
     .filter((t): t is string => !!t)
-    .map((t) => resolve("ppt", t));
+    .map((t) => resolve(folder, t));
+  if (!slidePaths.length) {
+    slidePaths = Object.keys(zip.files)
+      .filter((f) => /\/slides\/slide\d+\.xml$/.test(f))
+      .sort((a, b) => Number(a.match(/(\d+)\.xml$/)![1]) - Number(b.match(/(\d+)\.xml$/)![1]));
+  }
+  if (!slidePaths.length) throw new Error("No slides were found in that file.");
 
   const slides: ImportedSlide[] = [];
   for (const path of slidePaths) {
-    const xml = await read(path);
-    if (!xml) continue;
+    const raw = await read(path);
+    if (!raw) continue;
+    const xml = simplify(raw);
     let title = "";
     const lines: string[] = [];
-    for (const shape of xml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) ?? []) {
-      const isTitle = /<p:ph[^>]*type="(?:title|ctrTitle)"/.test(shape);
+    for (const shape of elements(xml, "sp")) {
+      const isTitle = /<ph[^>]*type="(?:title|ctrTitle)"/.test(shape);
       const text = paragraphs(shape);
       if (isTitle && !title) title = text.join(" ");
       else lines.push(...text);
     }
     // Tables: one bullet per row, cells separated by dots.
-    for (const row of xml.match(/<a:tr[ >][\s\S]*?<\/a:tr>/g) ?? []) {
-      const cells = (row.match(/<a:tc[ >][\s\S]*?<\/a:tc>/g) ?? []).map((cell) => paragraphs(cell).join(" ")).filter(Boolean);
+    for (const row of elements(xml, "tr")) {
+      const cells = elements(row, "tc").map((cell) => paragraphs(cell).join(" ")).filter(Boolean);
       if (cells.length) lines.push(cells.join(" · "));
     }
 
@@ -95,7 +123,7 @@ export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
     if (slideRels) {
       const slideRelMap = relationships(slideRels);
       // The biggest picture the slide actually shows becomes the lesson picture.
-      const used = new Set([...xml.matchAll(/r:embed="([^"]+)"/g)].map((m) => m[1]));
+      const used = new Set([...raw.matchAll(/\s\w+:embed="([^"]+)"/g)].map((m) => m[1]));
       for (const id of used) {
         const rel = slideRelMap.get(id);
         if (!rel?.type.endsWith("/image")) continue;
@@ -108,24 +136,38 @@ export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
         }
       }
       for (const { target, type } of slideRelMap.values()) {
-        if (!type.endsWith("/notesSlide")) continue;
-        const notesXml = await read(resolve(path.replace(/\/[^/]+$/, ""), target));
-        if (!notesXml) continue;
-        for (const shape of notesXml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) ?? []) {
-          if (/<p:ph[^>]*type="body"/.test(shape)) notes.push(...paragraphs(shape));
+        const partXml = await read(resolve(path.replace(/\/[^/]+$/, ""), target));
+        if (!partXml) continue;
+        if (type.endsWith("/notesSlide")) {
+          for (const shape of elements(simplify(partXml), "sp")) {
+            if (/<ph[^>]*type="body"/.test(shape)) notes.push(...paragraphs(shape));
+          }
+        } else if (type.endsWith("/diagramData")) {
+          // SmartArt keeps its text in a separate part.
+          lines.push(...paragraphs(simplify(partXml)));
         }
       }
     }
 
     if (!title && !lines.length && !notes.length && !picture) continue;
     slides.push({
-      title: title || lines.shift() || `Slide ${slides.length + 1}`,
+      title: title || lines.shift() || "",
       body: [...lines.map((l) => `- ${l}`), ...notes].join("\n"),
       picture,
     });
   }
 
-  if (!slides.length) throw new Error("No text was found on the slides in that file.");
+  if (!slides.length) {
+    throw new Error(
+      `Found ${slidePaths.length} slide${slidePaths.length === 1 ? "" : "s"}, but no text or pictures on them that can be read.`,
+    );
+  }
+
+  // Slides saved as pictures have no text, so the file's name names the class.
+  if (slides.every((s) => !s.title && !s.body)) {
+    const title = fileName.replace(/\.pptx$/i, "").replace(/_+/g, " ").trim() || "Imported class";
+    return { title, summary: null, slides: slides.map((s, i) => ({ ...s, title: `Slide ${i + 1}` })) };
+  }
 
   // A short first slide is the cover: its title names the class and the rest is the summary.
   let title = "Imported class";
@@ -138,5 +180,5 @@ export async function readPptx(data: ArrayBuffer): Promise<ImportedDeck> {
   } else {
     title = first.title;
   }
-  return { title, summary, slides };
+  return { title, summary, slides: slides.map((s, i) => ({ ...s, title: s.title || `Slide ${i + 1}` })) };
 }
