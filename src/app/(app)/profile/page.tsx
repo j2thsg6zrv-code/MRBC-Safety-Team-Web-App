@@ -45,6 +45,7 @@ async function saveMessages(formData: FormData) {
     .update({
       notify_by: by === "none" ? "none" : "email",
       notify_open_spots: formData.get("notify_open_spots") === "on",
+      notify_shift_reminders: formData.get("notify_shift_reminders") === "on",
       notify_thanks: formData.get("notify_thanks") === "on",
       notify_chat_direct: formData.get("notify_chat_direct") === "on",
       notify_chat_team: formData.get("notify_chat_team") === "on",
@@ -148,6 +149,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
                   </label>
                 ))}
               </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="notify_shift_reminders" defaultChecked={profile?.notify_shift_reminders ?? true} className="mt-0.5" />
+                <span>Remind me 48 and 24 hours before a shift I signed up for</span>
+              </label>
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" name="notify_open_spots" defaultChecked={profile?.notify_open_spots ?? true} className="mt-0.5" />
                 <span>Remind me 48 and 24 hours before an event that still has open spots</span>
