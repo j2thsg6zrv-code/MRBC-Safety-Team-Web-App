@@ -1,3 +1,4 @@
+import { QrCodeLink } from "@/components/QrCodeLink";
 import QRCode from "qrcode";
 import { Status } from "@/components/Status";
 import { Button, Card, Field, PageHeader } from "@/components/ui";
@@ -88,10 +89,7 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
       <Status searchParams={searchParams} />
       <div className="space-y-4">
         <Card className="flex flex-wrap items-center gap-4">
-          <div
-            className="fixed-colors h-32 w-32 shrink-0 bg-white [&_svg]:h-full [&_svg]:w-full"
-            dangerouslySetInnerHTML={{ __html: qr }}
-          />
+          <QrCodeLink url={url} svg={qr} className="fixed-colors h-32 w-32 shrink-0 bg-white [&_svg]:h-full [&_svg]:w-full" />
           <div className="min-w-0 space-y-1 text-sm">
             <p className="font-medium">Public sign-up page</p>
             <p className="text-slate-600">

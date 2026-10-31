@@ -36,6 +36,19 @@ async function invite(formData: FormData) {
   finish("/members", invited === 0 ? { message: summary } : null, summary);
 }
 
+async function resendInvite(formData: FormData) {
+  "use server";
+  await requirePermission("manage_members");
+  const email = String(formData.get("email"));
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("invite_members", { p_emails: [email] });
+  if (error) finish("/members", error);
+  const result = ((data ?? []) as { result: string }[])[0]?.result;
+  revalidatePath("/members");
+  if (result !== "invited") finish("/members", { message: `Not sent: ${email} ${result ?? "could not be invited"}.` });
+  finish("/members", null, `Invite sent again to ${email}.`);
+}
+
 async function cancelInvite(formData: FormData) {
   "use server";
   await requirePermission("manage_members");
@@ -105,9 +118,15 @@ export default async function MembersPage({ searchParams }: { searchParams: Sear
               <p className="mb-1 text-sm font-medium">Invited, not signed up yet</p>
               <ul className="space-y-1 text-sm">
                 {invites.map((i) => (
-                  <li key={i.email} className="flex flex-wrap items-center gap-x-3">
+                  <li key={i.email} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span>{i.email}</span>
-                    <span className="text-slate-500">{formatDate(localDate(i.created_at), "short")}</span>
+                    <span className="text-slate-500">Last sent {formatDate(localDate(i.created_at), "short")}</span>
+                    <form action={resendInvite}>
+                      <input type="hidden" name="email" value={i.email} />
+                      <Button type="submit" variant="secondary" pendingLabel="Sending…" className="px-2 py-0.5 text-xs">
+                        Resend invite
+                      </Button>
+                    </form>
                     <form action={cancelInvite}>
                       <input type="hidden" name="email" value={i.email} />
                       <Button type="submit" variant="secondary" className="px-2 py-0.5 text-xs">Cancel</Button>
