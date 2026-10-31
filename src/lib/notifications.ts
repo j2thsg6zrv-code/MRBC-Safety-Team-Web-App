@@ -5,6 +5,9 @@ import QRCode from "qrcode";
 // these Vercel environment variables (Settings → Environment Variables):
 //   GMAIL_ADDRESS, GMAIL_APP_PASSWORD   (the address and its app password;
 //   an @icloud.com, @me.com or @mac.com address works too)
+// If emails start failing with "535 authentication failed", the app password
+// was revoked (changing the Apple ID or Google password does this): make a new
+// one, paste it into GMAIL_APP_PASSWORD, and redeploy so the site picks it up.
 // Everything is email only for now (no paid texting). Texting through Twilio
 // still works if the database ever queues a text and these are added:
 //   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER (e.g. +18005551234)
