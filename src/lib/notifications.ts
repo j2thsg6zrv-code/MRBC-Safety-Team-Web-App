@@ -18,6 +18,8 @@ const emailAddress = () => process.env.GMAIL_ADDRESS?.trim() ?? "";
 const emailPassword = () => process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "") ?? "";
 
 export const emailReady = () => !!(emailAddress() && emailPassword());
+/** The address automatic emails come from, shown on the Admin page. */
+export const senderAddress = () => emailAddress();
 export const textReady = () =>
   !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_FROM_NUMBER);
 
