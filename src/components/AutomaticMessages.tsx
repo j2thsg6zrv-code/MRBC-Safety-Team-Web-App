@@ -109,6 +109,9 @@ export async function AutomaticMessages() {
   const team = (members ?? []) as { id: string; notify_by: string }[];
   const messages = (data ?? []) as OutboxMessage[];
   const ready = emailReady();
+  // The newest finished message failed because the email account refused the login.
+  const latest = messages.find((m) => m.sent_at || m.error);
+  const loginRefused = !!latest?.error && /\b535\b|Invalid login/i.test(latest.error);
 
   return (
     <Card>
@@ -129,6 +132,13 @@ export async function AutomaticMessages() {
           </form>
         )}
       </div>
+      {loginRefused && (
+        <p className="mb-3 rounded-md bg-amber-50 p-2 text-sm text-amber-800">
+          The email account refused the app&apos;s login, so messages aren&apos;t going out. Make a new app password
+          (Google or Apple account settings), paste it into GMAIL_APP_PASSWORD in Vercel, redeploy, then send a test
+          email.
+        </p>
+      )}
       {ready && (
         <div className="mb-3">
           <h3 className="mb-2 text-sm font-semibold">Send now</h3>
