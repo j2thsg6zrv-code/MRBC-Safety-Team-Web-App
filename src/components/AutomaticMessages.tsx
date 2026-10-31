@@ -3,7 +3,7 @@ import { Button, Card } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
 import { addDays, today } from "@/lib/dates";
 import { finish } from "@/lib/forms";
-import { emailReady, type OutboxMessage } from "@/lib/notifications";
+import { emailReady, senderAddress, type OutboxMessage } from "@/lib/notifications";
 import { createClient } from "@/lib/supabase/server";
 
 async function sendTest() {
@@ -121,7 +121,7 @@ export async function AutomaticMessages() {
       </p>
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         <span className={ready ? "text-green-700" : "text-amber-700"}>
-          {ready ? "✓ Email is set up" : "○ Email isn't set up yet"}
+          {ready ? `✓ Email is set up, sending from ${senderAddress()}` : "○ Email isn't set up yet"}
         </span>
         {ready && (
           <form action={sendTest}>
