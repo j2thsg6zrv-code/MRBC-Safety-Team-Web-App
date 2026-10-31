@@ -35,6 +35,11 @@ export async function addCredential(formData: FormData) {
   const back = returnPath(formData);
   const profileId = String(formData.get("profile_id"));
   if (!(await allowedFor(profileId))) finish(back, { message: "You can only change your own record." });
+  // Training certifications come from passing a class; only member managers
+  // can add one by hand. Members add outside certifications instead.
+  if (kind === KINDS.certification && !(await getCurrentUser()).can("manage_members")) {
+    finish(back, { message: "Certifications from training classes are added when you pass the class." });
+  }
 
   const itemId = String(formData.get("item_id"));
   const earnedOn = String(formData.get("earned_on"));
@@ -64,6 +69,9 @@ export async function removeCredential(formData: FormData) {
   const back = returnPath(formData);
   const profileId = String(formData.get("profile_id"));
   if (!(await allowedFor(profileId))) finish(back, { message: "You can only change your own record." });
+  if (kind === KINDS.certification && !(await getCurrentUser()).can("manage_members")) {
+    finish(back, { message: "Ask an admin to remove a certification from a training class." });
+  }
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -73,4 +81,45 @@ export async function removeCredential(formData: FormData) {
     .eq("profile_id", profileId);
   revalidatePath("/", "layout");
   finish(back, error, `${kind.label} removed.`);
+}
+
+// Outside certifications (CPR, first aid and so on) are typed in by the member:
+// a name, where it came from, when it was earned and when it runs out.
+export async function addOutsideCertification(formData: FormData) {
+  const back = returnPath(formData);
+  const profileId = String(formData.get("profile_id"));
+  if (!(await allowedFor(profileId))) finish(back, { message: "You can only change your own record." });
+
+  const name = text(formData, "name");
+  const earnedOn = text(formData, "earned_on");
+  const expiresOn = text(formData, "expires_on");
+  if (!name) finish(back, { message: "Enter the name of the certification." });
+  if (!earnedOn) finish(back, { message: "Enter the date you got it." });
+  if (expiresOn && expiresOn < earnedOn) finish(back, { message: "The expiration date can't be before the date you got it." });
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("outside_certifications").insert({
+    profile_id: profileId,
+    name,
+    issued_by: text(formData, "issued_by"),
+    earned_on: earnedOn,
+    expires_on: expiresOn,
+  });
+  revalidatePath("/", "layout");
+  finish(back, error, "Certification added.");
+}
+
+export async function removeOutsideCertification(formData: FormData) {
+  const back = returnPath(formData);
+  const profileId = String(formData.get("profile_id"));
+  if (!(await allowedFor(profileId))) finish(back, { message: "You can only change your own record." });
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("outside_certifications")
+    .delete()
+    .eq("id", String(formData.get("held_id")))
+    .eq("profile_id", profileId);
+  revalidatePath("/", "layout");
+  finish(back, error, "Certification removed.");
 }

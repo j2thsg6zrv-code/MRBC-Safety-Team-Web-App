@@ -67,10 +67,18 @@ function Holders({ holders }: { holders: Holder[] }) {
 export default async function CertificationSetupPage({ searchParams }: { searchParams: SearchParams }) {
   await requireAdmin();
   const supabase = await createClient();
-  const [{ data: certs }, { data: held }] = await Promise.all([
+  const [{ data: certs }, { data: held }, { data: outside }] = await Promise.all([
     supabase.from("certifications").select("*").order("name"),
+    supabase.from("outside_certifications").select("id, name, issued_by, expires_on, profiles(full_name, email)").order("name"),
     supabase.from("member_certifications").select("certification_id, expires_on, profiles(full_name, email)").order("expires_on"),
   ]);
+  const outsideList = (outside ?? []) as unknown as {
+    id: string;
+    name: string;
+    issued_by: string | null;
+    expires_on: string | null;
+    profiles: { full_name: string; email: string } | null;
+  }[];
   const holdersOf = (id: string) =>
     ((held ?? []) as unknown as Holder[])
       .filter((h) => h.certification_id === id)
@@ -81,8 +89,8 @@ export default async function CertificationSetupPage({ searchParams }: { searchP
       <PageHeader title="Certifications" />
       <p className="mb-6 text-sm text-slate-600">
         <Link href="/admin" className="text-blue-700 underline">Admin</Link> &rsaquo; Certifications. The certifications
-        members can hold. Members add them to themselves under My Certifications; you can add them to anyone from their
-        page under Safety Team Members.
+        members earn by passing training classes (they&apos;re added automatically). You can also add one to anyone from their
+        page under Safety Team Members. Certifications members earned outside the app, like CPR, are listed at the bottom.
       </p>
       <Status searchParams={searchParams} />
       <div className="space-y-4">
@@ -115,6 +123,26 @@ export default async function CertificationSetupPage({ searchParams }: { searchP
               <Button type="submit">Add certification</Button>
             </div>
           </form>
+        </Card>
+        <Card>
+          <h2 className="mb-1 font-semibold">Outside certifications</h2>
+          <p className="mb-3 text-sm text-slate-600">Added by members under My Certifications, for example CPR.</p>
+          {outsideList.length === 0 ? (
+            <p className="text-sm text-slate-500">No outside certifications yet.</p>
+          ) : (
+            <ul className="space-y-1 text-sm">
+              {outsideList.map((c) => {
+                const status = expiryStatus(c.expires_on);
+                return (
+                  <li key={c.id}>
+                    <span className="font-medium">{c.name}</span>
+                    {c.issued_by ? ` (${c.issued_by})` : ""} · {c.profiles?.full_name || c.profiles?.email} ·{" "}
+                    <span className={`text-xs ${status.className}`}>{status.label}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </Card>
       </div>
     </>
