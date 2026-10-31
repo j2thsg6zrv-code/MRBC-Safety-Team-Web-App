@@ -1,3 +1,4 @@
+import { QrCodeLink } from "@/components/QrCodeLink";
 import Link from "next/link";
 import QRCode from "qrcode";
 import { revalidatePath } from "next/cache";
@@ -207,13 +208,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
             )}
           </p>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div
-              className="w-48 shrink-0 rounded-md bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
-              style={{ colorScheme: "light", background: "#fff" }}
-              dangerouslySetInnerHTML={{ __html: qrSvg }}
-            />
+            <QrCodeLink url={signupUrl} svg={qrSvg} className="w-48 shrink-0 rounded-md bg-white p-2 [&_svg]:h-auto [&_svg]:w-full" />
             <div className="min-w-0 space-y-3">
-              <p className="break-all font-mono text-sm">{signupUrl}</p>
+              <a href={signupUrl} target="_blank" rel="noopener noreferrer" className="block break-all font-mono text-sm text-blue-700 underline">{signupUrl}</a>
               <ShareLink
                 url={signupUrl}
                 title="Join the MRBC Safety Team app"
@@ -232,13 +229,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
             sign in. On a phone, use &ldquo;Add to Home Screen&rdquo; to keep it like an app.
           </p>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div
-              className="w-48 shrink-0 rounded-md bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
-              style={{ colorScheme: "light", background: "#fff" }}
-              dangerouslySetInnerHTML={{ __html: appQrSvg }}
-            />
+            <QrCodeLink url={appUrl} svg={appQrSvg} className="w-48 shrink-0 rounded-md bg-white p-2 [&_svg]:h-auto [&_svg]:w-full" />
             <div className="min-w-0 space-y-3">
-              <p className="break-all font-mono text-sm">{appUrl}</p>
+              <a href={appUrl} target="_blank" rel="noopener noreferrer" className="block break-all font-mono text-sm text-blue-700 underline">{appUrl}</a>
               <ShareLink
                 url={appUrl}
                 title="MRBC Safety Team app"

@@ -1,3 +1,4 @@
+import { QrCodeLink } from "@/components/QrCodeLink";
 import QRCode from "qrcode";
 import { ShareLink } from "@/components/ShareLink";
 import { Card, PageHeader } from "@/components/ui";
@@ -43,13 +44,9 @@ export default async function SharePage() {
             <h2 className="mb-1 font-semibold">{code.heading}</h2>
             <p className="mb-4 text-sm text-slate-600">{code.blurb}</p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div
-                className="w-48 shrink-0 rounded-md bg-white p-2 [&_svg]:h-auto [&_svg]:w-full"
-                style={{ colorScheme: "light", background: "#fff" }}
-                dangerouslySetInnerHTML={{ __html: code.svg }}
-              />
+              <QrCodeLink url={code.url} svg={code.svg} className="w-48 shrink-0 rounded-md bg-white p-2 [&_svg]:h-auto [&_svg]:w-full" />
               <div className="min-w-0 space-y-3">
-                <p className="break-all font-mono text-sm">{code.url}</p>
+                <a href={code.url} target="_blank" rel="noopener noreferrer" className="block break-all font-mono text-sm text-blue-700 underline">{code.url}</a>
                 <ShareLink
                   url={code.url}
                   title={code.title}

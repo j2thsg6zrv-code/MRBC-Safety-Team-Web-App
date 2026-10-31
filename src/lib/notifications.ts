@@ -60,7 +60,7 @@ async function emailHtml(body: string, qrLink: boolean) {
   if (!qrLink || !url) return { html, attachments: [] };
   const qr = await QRCode.toBuffer(url, { width: 360, margin: 2 });
   return {
-    html: `${html}<br><br>Or scan this code with your phone's camera:<br><img src="cid:qr" alt="QR code" width="180" height="180">`,
+    html: `${html}<br><br>Or scan (or tap) this code:<br><a href="${escapeHtml(url)}"><img src="cid:qr" alt="QR code. Tap to open the sign-up page" width="180" height="180" style="border:0"></a>`,
     attachments: [{ filename: "sign-up-qr.png", content: qr, cid: "qr" }],
   };
 }
