@@ -84,6 +84,7 @@ export default async function DashboardPage({
     { count: openIncidents },
     { data: greeterData },
     { data: myCerts },
+    { data: outsideCerts },
   ] = await Promise.all([
     supabase
       .from("events")
@@ -122,6 +123,7 @@ export default async function DashboardPage({
       .from("member_certifications")
       .select("id, expires_on, certifications(name)")
       .eq("profile_id", user.id),
+    supabase.from("outside_certifications").select("id, name, expires_on").eq("profile_id", user.id),
   ]);
   const watchList = (watchData ?? []) as WatchListEntry[];
   const watchPhotos = await photoUrls(supabase, watchList.slice(0, 4).map((w) => w.photo_path));
@@ -151,6 +153,7 @@ export default async function DashboardPage({
   );
   const certifications = ((myCerts ?? []) as unknown as { id: string; expires_on: string | null; certifications: { name: string } | null }[])
     .map((c) => ({ id: c.id, name: c.certifications?.name ?? "", status: expiryStatus(c.expires_on) }))
+    .concat((outsideCerts ?? []).map((c) => ({ id: c.id, name: c.name, status: expiryStatus(c.expires_on) })))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const mySignups = ((mySignupData ?? []) as unknown as MySignup[])
@@ -241,7 +244,7 @@ export default async function DashboardPage({
               </Link>
             </div>
             {certifications.length === 0 ? (
-              <p className="text-sm text-slate-600">None yet. Pass a training class or add one you&apos;ve earned.</p>
+              <p className="text-sm text-slate-600">None yet. Pass a training class or add one like CPR that you earned outside the app.</p>
             ) : (
               <ul className="space-y-1 text-sm">
                 {certifications.map((c) => (

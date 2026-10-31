@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { CredentialCard } from "@/components/CredentialCard";
+import { CertificationsCard, type OutsideCertification } from "@/components/CertificationsCard";
 import type { MemberQualification } from "@/components/QualificationList";
 import { Status } from "@/components/Status";
 import { Button, Card, PageHeader, Select } from "@/components/ui";
@@ -34,7 +35,7 @@ export default async function MemberPage({
   const canManage = user.can("manage_members");
   const supabase = await createClient();
 
-  const [{ data: member }, { data: quals }, { data: roles }, { data: allQuals }, { data: certs }, { data: allCerts }] = await Promise.all([
+  const [{ data: member }, { data: quals }, { data: roles }, { data: allQuals }, { data: certs }, { data: allCerts }, { data: outside }] = await Promise.all([
     supabase.from("profiles").select("*, roles(name, is_admin)").eq("id", id).maybeSingle(),
     supabase
       .from("member_qualifications")
@@ -49,13 +50,19 @@ export default async function MemberPage({
       .eq("profile_id", id)
       .order("expires_on"),
     supabase.from("certifications").select("id, name").order("name"),
+    supabase
+      .from("outside_certifications")
+      .select("id, name, issued_by, earned_on, expires_on")
+      .eq("profile_id", id)
+      .order("name"),
   ]);
   if (!member) notFound();
   const memberIsAdmin = !!(member.roles as { is_admin: boolean } | null)?.is_admin;
   // Only admins can make someone an admin or change an admin's role or status.
   const canEditRole = canManage && (user.isAdmin || !memberIsAdmin);
   const roleChoices = (roles ?? []).filter((r) => user.isAdmin || !r.is_admin);
-  // Members keep their own qualifications and certifications up to date.
+  // Members keep their own qualifications and outside certifications up to
+  // date; training certifications come from passing a class (or a manager).
   const canEditCredentials = canManage || id === user.id;
 
   return (
@@ -120,10 +127,18 @@ export default async function MemberPage({
           />
           <CredentialCard
             kind="certification"
-            title="Certifications"
+            title="Certifications from training"
             profileId={id}
             items={(certs ?? []) as unknown as MemberQualification[]}
             choices={allCerts ?? []}
+            canEdit={canManage}
+            returnTo={`/members/${id}`}
+          />
+          <CertificationsCard
+            title="Outside certifications"
+            profileId={id}
+            training={[]}
+            outside={(outside ?? []) as OutsideCertification[]}
             canEdit={canEditCredentials}
             returnTo={`/members/${id}`}
           />

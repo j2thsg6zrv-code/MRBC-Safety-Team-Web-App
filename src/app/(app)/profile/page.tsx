@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { CredentialCard } from "@/components/CredentialCard";
+import { CertificationsCard, type OutsideCertification, type TrainingCertification } from "@/components/CertificationsCard";
 import type { MemberQualification } from "@/components/QualificationList";
 import { Status } from "@/components/Status";
 import { Button, Card, Field, PageHeader } from "@/components/ui";
@@ -77,7 +78,7 @@ async function changePassword(formData: FormData) {
 export default async function ProfilePage({ searchParams }: { searchParams: SearchParams }) {
   const user = await getCurrentUser();
   const supabase = await createClient();
-  const [{ data: profile }, { data: quals }, { data: allQuals }, { data: certs }, { data: allCerts }] = await Promise.all([
+  const [{ data: profile }, { data: quals }, { data: allQuals }, { data: certs }, { data: outside }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
       .from("member_qualifications")
@@ -90,7 +91,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
       .select("id, earned_on, expires_on, certifications(name)")
       .eq("profile_id", user.id)
       .order("expires_on"),
-    supabase.from("certifications").select("id, name").order("name"),
+    supabase
+      .from("outside_certifications")
+      .select("id, name, issued_by, earned_on, expires_on")
+      .eq("profile_id", user.id)
+      .order("name"),
   ]);
 
   return (
@@ -123,12 +128,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
             canEdit
             returnTo="/profile"
           />
-          <CredentialCard
-            kind="certification"
+          <CertificationsCard
             title="My certifications"
             profileId={user.id}
-            items={(certs ?? []) as unknown as MemberQualification[]}
-            choices={allCerts ?? []}
+            training={(certs ?? []) as unknown as TrainingCertification[]}
+            outside={(outside ?? []) as OutsideCertification[]}
             canEdit
             returnTo="/profile"
           />
