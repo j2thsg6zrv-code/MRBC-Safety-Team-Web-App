@@ -14,6 +14,7 @@ export type UpcomingEvent = {
 };
 
 const WINDOWS = [
+  { days: 2, label: "Today and tomorrow" },
   { days: 3, label: "Next 3 days" },
   { days: 7, label: "Next 7 days" },
   { days: 14, label: "Next 2 weeks" },
@@ -33,6 +34,7 @@ function SendButton({
   action,
   events,
   describe,
+  defaultDays = 7,
 }: {
   title: string;
   help: string;
@@ -40,9 +42,10 @@ function SendButton({
   action: (formData: FormData) => Promise<void>;
   events: UpcomingEvent[];
   describe: (inWindow: UpcomingEvent[]) => { recipients: number; lines: string[]; empty: string; confirm: string };
+  defaultDays?: number;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [days, setDays] = useState(7);
+  const [days, setDays] = useState(defaultDays);
   const { recipients, lines, empty, confirm } = describe(events.filter((e) => e.daysAway < days));
 
   return (
@@ -143,6 +146,7 @@ export function SendReminders({
         help="Emails every active member a list of the positions that still need people, with a link to sign up."
         buttonLabel="Send open spots…"
         action={openSpotsAction}
+        defaultDays={2}
         events={events}
         describe={(inWindow) => {
           const open = inWindow.flatMap((e) =>
