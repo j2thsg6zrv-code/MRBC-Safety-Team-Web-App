@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { ChatLive } from "@/components/ChatLive";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { getCurrentUser } from "@/lib/auth";
 import { TEAM, type Conversation } from "@/lib/chat";
@@ -34,7 +33,6 @@ export default async function ChatLayout({ children }: { children: ReactNode }) 
 
   return (
     <div className="-mx-4 -my-6 grid h-[calc(100dvh-3.25rem)] md:-mx-8 md:h-dvh md:grid-cols-[18rem_1fr]">
-      <ChatLive me={user.id} />
       <ChatSidebar conversations={conversations} />
       {children}
     </div>
