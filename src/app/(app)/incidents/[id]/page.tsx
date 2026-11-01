@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { IncidentForm, readIncidentForm, SEVERITIES, type IncidentValues } from "@/components/IncidentForm";
 import { Status } from "@/components/Status";
 import { Button, Card, PageHeader, TextArea } from "@/components/ui";
-import { getCurrentUser, requirePermission } from "@/lib/auth";
+import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { formatDate, formatTime, localDate } from "@/lib/dates";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { incidentFormOptions } from "@/lib/incidents";
@@ -14,6 +14,8 @@ type Incident = IncidentValues & {
   follow_up_notes: string | null;
   reported_by: string | null;
   created_at: string;
+  delete_requested_at: string | null;
+  delete_request_reason: string | null;
   buildings: { name: string } | null;
   events: { title: string; event_date: string } | null;
   watch_list: { id: string; full_name: string } | null;
@@ -31,7 +33,7 @@ async function updateReport(formData: FormData) {
 
 async function updateFollowUp(formData: FormData) {
   "use server";
-  await requirePermission("manage_incidents");
+  await requireAdmin();
   const id = String(formData.get("id"));
   const supabase = await createClient();
   const { error } = await supabase
@@ -41,9 +43,27 @@ async function updateFollowUp(formData: FormData) {
   finish(`/incidents/${id}`, error);
 }
 
+async function requestDeletion(formData: FormData) {
+  "use server";
+  await getCurrentUser();
+  const id = String(formData.get("id"));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("request_incident_deletion", { p_report: id, p_reason: text(formData, "reason") });
+  finish(`/incidents/${id}`, error, "Request sent. An admin will review it.");
+}
+
+async function cancelDeletion(formData: FormData) {
+  "use server";
+  const user = await getCurrentUser();
+  const id = String(formData.get("id"));
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cancel_incident_deletion", { p_report: id });
+  finish(`/incidents/${id}`, error, user.isAdmin ? "Deletion request declined." : "Deletion request cancelled.");
+}
+
 async function deleteReport(formData: FormData) {
   "use server";
-  await requirePermission("manage_incidents");
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("incident_reports").delete().eq("id", String(formData.get("id")));
   if (error) finish(`/incidents/${formData.get("id")}`, error);
@@ -68,8 +88,12 @@ export default async function IncidentPage({
   if (!data) notFound();
   const report = data as unknown as Incident;
 
-  const canManage = user.can("manage_incidents");
-  const canEdit = canManage || (report.reported_by === user.id && report.status === "open");
+  // Only admins close reports, write follow-up notes and delete. The person
+  // who filed a report can edit it and ask an admin to delete it.
+  const canManage = user.isAdmin;
+  const isReporter = report.reported_by === user.id;
+  const canEdit = canManage || isReporter;
+  const deleteRequested = !!report.delete_requested_at;
   const options = canEdit ? await incidentFormOptions(supabase, user, report.incident_date) : null;
   const severity = SEVERITIES[report.severity];
 
@@ -96,6 +120,31 @@ export default async function IncidentPage({
         </div>
       </PageHeader>
       <Status searchParams={searchParams} />
+      {deleteRequested && (canManage || isReporter) && (
+        <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 shadow-sm">
+          <p className="font-medium text-amber-900">
+            {isReporter && !canManage
+              ? "You asked an admin to delete this report."
+              : `${report.profiles?.full_name || report.profiles?.email || "The person who filed this report"} asked for this report to be deleted.`}
+          </p>
+          <p className="text-sm text-amber-900">Asked on {formatDate(localDate(report.delete_requested_at!), "short")}.</p>
+          {report.delete_request_reason && (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-amber-900">Reason: {report.delete_request_reason}</p>
+          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {canManage && (
+              <form action={deleteReport}>
+                <input type="hidden" name="id" value={report.id} />
+                <Button type="submit" variant="danger">Delete report</Button>
+              </form>
+            )}
+            <form action={cancelDeletion}>
+              <input type="hidden" name="id" value={report.id} />
+              <Button type="submit" variant="secondary">{canManage ? "Decline request" : "Cancel request"}</Button>
+            </form>
+          </div>
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <Card>
@@ -143,11 +192,22 @@ export default async function IncidentPage({
               <h2 className="mb-3 font-semibold">Edit report</h2>
               <IncidentForm action={updateReport} incident={report} defaultDate={report.incident_date} {...options} submitLabel="Save changes" />
             </Card>
-            {canManage && (
+            {canManage && !deleteRequested && (
               <Card>
                 <form action={deleteReport}>
                   <input type="hidden" name="id" value={report.id} />
                   <Button type="submit" variant="danger">Delete report</Button>
+                </form>
+              </Card>
+            )}
+            {isReporter && !canManage && !deleteRequested && (
+              <Card>
+                <h2 className="mb-1 font-semibold">Ask to delete this report</h2>
+                <p className="mb-3 text-sm text-slate-600">Only an admin can delete a report. We&apos;ll email the admins so they can review your request.</p>
+                <form action={requestDeletion} className="space-y-3">
+                  <input type="hidden" name="id" value={report.id} />
+                  <TextArea label="Why should it be deleted? (optional)" name="reason" rows={2} maxLength={1000} />
+                  <Button type="submit" variant="secondary">Request deletion</Button>
                 </form>
               </Card>
             )}

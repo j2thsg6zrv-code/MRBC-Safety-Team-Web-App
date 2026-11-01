@@ -9,8 +9,7 @@ export const PERMISSIONS = [
   { key: "manage_events", label: "Manage events", description: "Schedule events and assign people to positions." },
   { key: "view_watch_list", label: "View watch list", description: "See people to watch for or who are banned." },
   { key: "manage_watch_list", label: "Manage watch list", description: "Add, edit and remove watch list entries." },
-  { key: "view_incidents", label: "View all incident reports", description: "See every incident report, not just their own." },
-  { key: "manage_incidents", label: "Manage incident reports", description: "Edit and close any incident report." },
+  { key: "view_incidents", label: "View all incident reports", description: "See every incident report, not just their own. Only admins can edit others' reports, close them or delete them." },
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number]["key"];

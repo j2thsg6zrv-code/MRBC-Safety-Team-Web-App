@@ -14,6 +14,7 @@ type Row = {
   severity: keyof typeof SEVERITIES;
   status: "open" | "closed";
   location: string | null;
+  delete_requested_at: string | null;
   buildings: { name: string } | null;
   profiles: { full_name: string } | null;
 };
@@ -25,12 +26,12 @@ export default async function IncidentsPage({
 }) {
   const { status } = await searchParams;
   const user = await getCurrentUser();
-  const seesAll = user.can("view_incidents") || user.can("manage_incidents");
+  const seesAll = user.can("view_incidents");
   const supabase = await createClient();
 
   let query = supabase
     .from("incident_reports")
-    .select("id, incident_date, incident_time, category, severity, status, location, buildings(name), profiles(full_name)")
+    .select("id, incident_date, incident_time, category, severity, status, location, delete_requested_at, buildings(name), profiles(full_name)")
     .order("incident_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(200);
@@ -83,8 +84,13 @@ export default async function IncidentsPage({
                       {r.profiles && ` · Filed by ${r.profiles.full_name}`}
                     </p>
                   </div>
+                  <span className="flex items-center gap-2">
+                  {r.delete_requested_at && (
+                    <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Deletion requested</span>
+                  )}
                   <span className={`rounded px-2 py-0.5 text-xs font-medium ${r.status === "open" ? "bg-blue-100 text-blue-800" : "bg-slate-200 text-slate-700"}`}>
                     {r.status === "open" ? "Open" : "Closed"}
+                  </span>
                   </span>
                 </Link>
               </li>
