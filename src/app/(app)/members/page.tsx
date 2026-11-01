@@ -67,14 +67,21 @@ type Member = {
 };
 
 function MemberRow({ m }: { m: Member }) {
+  // The name opens the member's page; the email and phone are tap-to-email and
+  // tap-to-call links of their own (a link can't sit inside another link).
   return (
-    <Link href={`/members/${m.id}`} className="flex flex-1 flex-wrap items-center justify-between gap-2 px-4 py-3 hover:bg-slate-50">
-      <div>
-        <p className="font-medium">{m.full_name || m.email}</p>
-        <p className="text-sm text-slate-500">{[m.email, m.phone].filter(Boolean).join(" · ")}</p>
+    <div className="flex flex-1 flex-wrap items-center justify-between gap-2 px-4 py-3">
+      <div className="min-w-0">
+        <Link href={`/members/${m.id}`} className="font-medium text-blue-700 hover:underline">
+          {m.full_name || m.email}
+        </Link>
+        <p className="flex flex-wrap gap-x-3 text-sm">
+          <a href={`mailto:${m.email}`} className="break-all text-blue-700 underline">{m.email}</a>
+          {m.phone && <a href={`tel:${m.phone}`} className="text-blue-700 underline">{m.phone}</a>}
+        </p>
       </div>
       <span className="text-sm text-slate-600">{m.roles?.name ?? "No role"}</span>
-    </Link>
+    </div>
   );
 }
 
