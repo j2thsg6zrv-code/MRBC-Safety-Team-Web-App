@@ -5,6 +5,7 @@ import { formatDate, localDate } from "@/lib/dates";
 import { finish } from "@/lib/forms";
 import { bestTimeLabel, type JoinInterest } from "@/lib/joinInterest";
 import { createClient } from "@/lib/supabase/server";
+import { PhoneLink } from "@/components/PhoneLink";
 
 async function setContacted(formData: FormData) {
   "use server";
@@ -35,8 +36,7 @@ function Person({ person }: { person: JoinInterest }) {
       <div className="min-w-0 space-y-0.5 text-sm">
         <p className="font-medium">{person.name}</p>
         <p className="flex flex-wrap gap-x-3">
-          <a href={`tel:${person.phone}`} className="text-blue-700 underline">{person.phone}</a>
-          <a href={`sms:${person.phone}`} className="text-blue-700 underline">Text</a>
+          <PhoneLink phone={person.phone} />
           <a href={`mailto:${person.email}`} className="break-all text-blue-700 underline">{person.email}</a>
         </p>
         <p className="text-slate-600">

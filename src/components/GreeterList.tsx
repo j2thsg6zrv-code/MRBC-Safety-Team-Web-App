@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GreeterReminder } from "@/components/GreeterReminder";
 import { formatDate } from "@/lib/dates";
 import { SERVICES, type GreeterSignup } from "@/lib/greeters";
+import { PhoneLink } from "@/components/PhoneLink";
 
 const TIMES = { first_service: "8:30", second_service: "11:00" } as const;
 
@@ -36,7 +37,7 @@ export function GreeterList({ signups }: { signups: GreeterSignup[] }) {
                       {p.email ? (
                         <> · <a href={`mailto:${p.email}`} className="text-blue-700 underline">{p.email}</a></>
                       ) : p.phone ? (
-                        <> · <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a></>
+                        <> · <PhoneLink phone={p.phone} /></>
                       ) : null}
                     </li>
                   ))}

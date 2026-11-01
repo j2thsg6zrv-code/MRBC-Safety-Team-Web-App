@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/dates";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { publicGreetersUrl, SERVICES, upcomingSundays, type GreeterSignup } from "@/lib/greeters";
 import { createClient } from "@/lib/supabase/server";
+import { PhoneLink } from "@/components/PhoneLink";
 
 async function removeSignup(formData: FormData) {
   "use server";
@@ -152,10 +153,7 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
                               {p.email ? (
                                 <a href={`mailto:${p.email}`} className="text-blue-700 underline">{p.email}</a>
                               ) : p.phone ? (
-                                <>
-                                  <a href={`tel:${p.phone}`} className="text-blue-700 underline">{p.phone}</a>
-                                  <a href={`sms:${p.phone}`} className="text-blue-700 underline">Text</a>
-                                </>
+                                <PhoneLink phone={p.phone} />
                               ) : (
                                 <span className="text-slate-500">No email</span>
                               )}
