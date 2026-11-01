@@ -6,6 +6,7 @@ import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { finish, type SearchParams } from "@/lib/forms";
 import { formatDate, localDate } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
+import { PhoneLink } from "@/components/PhoneLink";
 
 async function approve(formData: FormData) {
   "use server";
@@ -77,7 +78,7 @@ function MemberRow({ m }: { m: Member }) {
         </Link>
         <p className="flex flex-wrap gap-x-3 text-sm">
           <a href={`mailto:${m.email}`} className="break-all text-blue-700 underline">{m.email}</a>
-          {m.phone && <a href={`tel:${m.phone}`} className="text-blue-700 underline">{m.phone}</a>}
+          {m.phone && <PhoneLink phone={m.phone} />}
         </p>
       </div>
       <span className="text-sm text-slate-600">{m.roles?.name ?? "No role"}</span>

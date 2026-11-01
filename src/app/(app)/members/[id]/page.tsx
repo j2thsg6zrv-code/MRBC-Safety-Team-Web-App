@@ -9,6 +9,7 @@ import { Button, Card, PageHeader, Select } from "@/components/ui";
 import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
+import { PhoneLink } from "@/components/PhoneLink";
 
 async function updateMembership(formData: FormData) {
   "use server";
@@ -87,11 +88,7 @@ export default async function MemberPage({
                 <dt className="inline text-slate-500">Phone: </dt>
                 <dd className="inline">
                   {member.phone ? (
-                    <>
-                      <a href={`tel:${member.phone}`} className="text-blue-700 underline">{member.phone}</a>
-                      {" · "}
-                      <a href={`sms:${member.phone}`} className="text-blue-700 underline">Text</a>
-                    </>
+                    <PhoneLink phone={member.phone} />
                   ) : (
                     "Not given"
                   )}
@@ -105,9 +102,7 @@ export default async function MemberPage({
                       {member.emergency_contact_name}
                       {member.emergency_contact_name && member.emergency_contact_phone && " · "}
                       {member.emergency_contact_phone && (
-                        <a href={`tel:${member.emergency_contact_phone}`} className="text-blue-700 underline">
-                          {member.emergency_contact_phone}
-                        </a>
+                        <PhoneLink phone={member.emergency_contact_phone} />
                       )}
                     </>
                   ) : (
