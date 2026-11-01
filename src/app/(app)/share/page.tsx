@@ -24,6 +24,15 @@ const CODES = [
     message: "Interested in serving on the MRBC safety team? Let us know here:",
     fileName: "mrbc-join-safety-team-qr.png",
   },
+  {
+    heading: "Interested in serving",
+    blurb:
+      "For anyone who wants to serve at MRBC but isn't sure where. They leave their name, phone, email, the best time to call and an optional note, and each answer is emailed to mrbcsafety@gmail.com and jana@matthewroad.org.",
+    url: siteUrl("/serve"),
+    title: "Serve at MRBC",
+    message: "Interested in serving at MRBC but not sure where? Let us know here:",
+    fileName: "mrbc-interested-in-serving-qr.png",
+  },
 ];
 
 export default async function SharePage() {
