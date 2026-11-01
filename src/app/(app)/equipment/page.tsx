@@ -6,6 +6,7 @@ import { getCurrentUser, requirePermission } from "@/lib/auth";
 import { addDays, today } from "@/lib/dates";
 import { finish, text } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
+import { Wishlist } from "./Wishlist";
 
 /** Equipment inventory: what the team has, how many, when it expires and when it was last checked. */
 type EquipmentItem = {
@@ -104,9 +105,9 @@ function ItemFields({ item }: { item?: EquipmentItem }) {
 export default async function EquipmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; saved?: string; error?: string }>;
+  searchParams: Promise<{ edit?: string; wish?: string; saved?: string; error?: string }>;
 }) {
-  const { edit } = await searchParams;
+  const { edit, wish } = await searchParams;
   const user = await getCurrentUser();
   const canManage = user.can("manage_equipment");
   const supabase = await createClient();
@@ -202,6 +203,7 @@ export default async function EquipmentPage({
           </table>
         </Card>
       )}
+      <Wishlist editId={wish} />
     </>
   );
 }
