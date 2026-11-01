@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const claim = data as Claim | null;
   if (!claim || !claim.vapid_public || !claim.vapid_private) return NextResponse.json({ sent: 0 });
 
-  const payload = JSON.stringify({ title: claim.title, body: claim.body, url: claim.url, tag: claim.tag });
+  const payload = JSON.stringify({ title: claim.title, body: claim.body || "Sent a picture", url: claim.url, tag: claim.tag });
   const options = {
     vapidDetails: { subject: claim.site_url, publicKey: claim.vapid_public, privateKey: claim.vapid_private },
     TTL: 60 * 60 * 12,

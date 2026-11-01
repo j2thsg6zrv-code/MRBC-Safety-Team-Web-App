@@ -12,7 +12,19 @@ export type ChatMessage = {
   recipient_id: string | null;
   body: string;
   created_at: string;
+  /** A picture or GIF in the private 'chat' bucket. */
+  image_path: string | null;
+  /** The earlier message this one answers. */
+  reply_to: string | null;
 };
+
+export type ChatReaction = { message_id: string; profile_id: string; emoji: string };
+
+export const CHAT_BUCKET = "chat";
+/** Pictures over this size (after shrinking photos) are turned away. GIFs aren't shrunk, so they keep moving. */
+export const MAX_PICTURE_BYTES = 10 * 1024 * 1024;
+/** The emojis offered when reacting to a message. */
+export const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "✅"];
 
 export type ChatMember = { id: string; name: string };
 
@@ -36,6 +48,11 @@ export function isMemberId(id: string) {
 export function conversationOf(message: Pick<ChatMessage, "sender_id" | "recipient_id">, me: string) {
   if (!message.recipient_id) return TEAM;
   return message.sender_id === me ? message.recipient_id : message.sender_id;
+}
+
+/** Where a picture sent in this conversation is stored. Row level security checks the same layout. */
+export function picturePrefix(conversation: string, me: string) {
+  return conversation === TEAM ? `team/${me}/` : `direct/${me}/${conversation}/`;
 }
 
 export function chatDay(timestamp: string) {
