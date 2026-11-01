@@ -360,7 +360,7 @@ export default async function EditClassPage({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Select label="Certification earned" name="certification_id" defaultValue={c.certification_id ?? ""}>
-              <option value="">None</option>
+              <option value="">Make one named after this class</option>
               {(certs ?? []).map((q) => (
                 <option key={q.id} value={q.id}>
                   {q.name}
