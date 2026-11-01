@@ -62,8 +62,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     { href: "/incidents", label: "Incident Reports" },
     { href: "/training", label: "Training" },
     { href: "/members", label: waiting ? `Safety Team Members (${waiting} waiting)` : "Safety Team Members" },
-    { href: "/buildings", label: "Buildings" },
-    { href: "/positions", label: "Positions" },
+    // Setup pages: only shown to people who can change them. Members already see
+    // each event's building and positions on the calendar.
+    ...(user.can("manage_buildings") ? [{ href: "/buildings", label: "Buildings" }] : []),
+    ...(user.can("manage_positions") ? [{ href: "/positions", label: "Positions" }] : []),
     { href: "/certifications", label: "My Certifications" },
     { href: "/share", label: "Share" },
     { href: "/feedback", label: newFeedback ? `Bugs & Requests (${newFeedback} new)` : "Bugs & Requests" },
