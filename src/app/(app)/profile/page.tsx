@@ -7,6 +7,7 @@ import { Button, Card, Field, PageHeader } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
+import { ChatSoundSetting } from "@/components/ChatSoundSetting";
 import { parseTheme, setThemeCookie, type Theme } from "@/lib/theme";
 
 async function saveProfile(formData: FormData) {
@@ -178,6 +179,10 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
               </p>
               <Button type="submit" variant="secondary">Save message settings</Button>
             </form>
+          </Card>
+          <Card>
+            <h2 className="mb-3 font-semibold">Chat sound</h2>
+            <ChatSoundSetting />
           </Card>
           <Card>
             <h2 className="mb-3 font-semibold">Appearance</h2>

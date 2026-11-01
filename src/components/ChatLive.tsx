@@ -3,12 +3,15 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { markRead } from "@/app/(app)/chat/actions";
-import { conversationOf, type ChatMessage } from "@/lib/chat";
+import { conversationOf, TEAM, type ChatMessage } from "@/lib/chat";
+import { playChatSound, unlockChatSound } from "@/lib/chat-sound";
 import { createClient } from "@/lib/supabase/client";
 
 /**
  * Listens for new and deleted chat messages and refreshes the page when one
  * arrives. A message in the open conversation is marked read straight away.
+ * Mounted on every page so a new message from someone else plays the alert
+ * sound wherever you are in the app.
  */
 export function ChatLive({ me }: { me: string }) {
   const router = useRouter();
@@ -30,6 +33,7 @@ export function ChatLive({ me }: { me: string }) {
           const message = payload.new as ChatMessage;
           if (message.sender_id === me) return; // sending already refreshed the page
           const conversation = conversationOf(message, me);
+          playChatSound(conversation === TEAM ? "team" : "direct");
           if (conversation === open.current) markRead(conversation);
           else router.refresh();
         })
@@ -41,13 +45,20 @@ export function ChatLive({ me }: { me: string }) {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       if (open.current) markRead(open.current);
-      else router.refresh();
+      else if (window.location.pathname.startsWith("/chat")) router.refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
+
+    // Browsers block sound until the person taps or types, so unlock it then.
+    const unlock = () => unlockChatSound();
+    window.addEventListener("pointerdown", unlock, { passive: true });
+    window.addEventListener("keydown", unlock);
 
     return () => {
       stopped = true;
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
       if (channel) supabase.removeChannel(channel);
     };
   }, [me, router]);
