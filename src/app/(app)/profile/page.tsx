@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { finish, text, type SearchParams } from "@/lib/forms";
 import { createClient } from "@/lib/supabase/server";
 import { ChatSoundSetting } from "@/components/ChatSoundSetting";
+import { PushSetting } from "@/components/PushSetting";
 import { parseTheme, setThemeCookie, type Theme } from "@/lib/theme";
 
 async function saveProfile(formData: FormData) {
@@ -51,6 +52,7 @@ async function saveMessages(formData: FormData) {
       notify_thanks: formData.get("notify_thanks") === "on",
       notify_chat_direct: formData.get("notify_chat_direct") === "on",
       notify_chat_team: formData.get("notify_chat_team") === "on",
+      push_chat_team: formData.get("push_chat_team") === "on",
     })
     .eq("id", user.id);
   finish("/profile", error, "Message settings saved.");
@@ -174,11 +176,19 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
                 <input type="checkbox" name="notify_chat_team" defaultChecked={profile?.notify_chat_team ?? false} className="mt-0.5" />
                 <span>Email me when someone posts in the whole-team chat</span>
               </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="push_chat_team" defaultChecked={profile?.push_chat_team ?? true} className="mt-0.5" />
+                <span>Send phone notifications for whole-team chat posts too (messages to you always notify)</span>
+              </label>
               <p className="text-xs text-slate-500">
                 Chat emails come once per conversation until you open it, so a busy chat won&apos;t fill your inbox.
               </p>
               <Button type="submit" variant="secondary">Save message settings</Button>
             </form>
+          </Card>
+          <Card>
+            <h2 className="mb-3 font-semibold">Phone notifications</h2>
+            <PushSetting />
           </Card>
           <Card>
             <h2 className="mb-3 font-semibold">Chat sound</h2>
