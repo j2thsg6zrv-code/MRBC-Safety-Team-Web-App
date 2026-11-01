@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { BackToDashboard } from "@/components/BackToDashboard";
 import { ChatLive } from "@/components/ChatLive";
 import { Nav, type NavItem } from "@/components/Nav";
 import { Card } from "@/components/ui";
@@ -78,7 +79,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       {/* Live chat updates and the new-message sound, on every page. */}
       <ChatLive me={user.id} />
       <Nav items={items} userName={user.fullName || user.email} />
-      <main className="flex-1 px-4 py-6 md:px-8">{children}</main>
+      <main className="flex-1 px-4 py-6 md:px-8">
+        <BackToDashboard />
+        {children}
+      </main>
     </div>
   );
 }
