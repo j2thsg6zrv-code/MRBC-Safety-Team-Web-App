@@ -12,6 +12,7 @@ import { Wishlist } from "./Wishlist";
 type EquipmentItem = {
   id: string;
   description: string;
+  location: string | null;
   quantity: number;
   expiration_date: string | null;
   date_checked: string | null;
@@ -30,6 +31,7 @@ type FormResult =
 
 function readForm(formData: FormData): FormResult {
   const description = text(formData, "description");
+  const location = text(formData, "location");
   const quantityText = text(formData, "quantity");
   const expiration_date = text(formData, "expiration_date");
   const date_checked = text(formData, "date_checked");
@@ -39,7 +41,7 @@ function readForm(formData: FormData): FormResult {
     return { problem: "Quantity must be a whole number (0 or more)." };
   if (expiration_date && !DATE.test(expiration_date)) return { problem: "The expiration date isn't a valid date." };
   if (date_checked && !DATE.test(date_checked)) return { problem: "The date checked isn't a valid date." };
-  return { values: { description, quantity, expiration_date, date_checked } };
+  return { values: { description, location, quantity, expiration_date, date_checked } };
 }
 
 async function save(formData: FormData) {
@@ -86,14 +88,18 @@ function expiry(date: string | null, now: string) {
   return null;
 }
 
-function ItemFields({ item }: { item?: EquipmentItem }) {
+function ItemFields({ item, locations }: { item?: EquipmentItem; locations: string[] }) {
   return (
     <>
       {item && <input type="hidden" name="id" value={item.id} />}
       <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
         <Field label="Quantity" name="quantity" type="number" inputMode="numeric" min={0} max={100000} step={1} required defaultValue={item?.quantity ?? 1} />
-        <Field label="Description" name="description" required maxLength={500} defaultValue={item?.description} placeholder="e.g. First aid kit (large), Building B lobby" />
+        <Field label="Description" name="description" required maxLength={500} defaultValue={item?.description} placeholder="e.g. First aid kit (large)" />
       </div>
+      <Field label="Location (where it's kept, optional)" name="location" maxLength={200} list="equipment-locations" defaultValue={item?.location ?? ""} placeholder="e.g. Building B lobby closet" />
+      <datalist id="equipment-locations">
+        {locations.map((l) => <option key={l} value={l} />)}
+      </datalist>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Expiration date (optional)" name="expiration_date" type="date" defaultValue={item?.expiration_date ?? ""} />
         <Field label="Date checked (optional)" name="date_checked" type="date" defaultValue={item?.date_checked ?? ""} />
@@ -113,11 +119,12 @@ export default async function EquipmentPage({
   const supabase = await createClient();
   const { data } = await supabase
     .from("equipment_items")
-    .select("id, description, quantity, expiration_date, date_checked")
+    .select("id, description, location, quantity, expiration_date, date_checked")
     .order("description")
     .limit(1000);
   const items = (data ?? []) as EquipmentItem[];
   const editing = canManage && edit ? items.find((i) => i.id === edit) : undefined;
+  const locations = [...new Set(items.map((i) => i.location).filter((l): l is string => !!l))].sort();
   const now = today();
   const expired = items.filter((i) => i.expiration_date && i.expiration_date < now).length;
   const soon = items.filter((i) => expiry(i.expiration_date, now)?.label === "Expires soon").length;
@@ -130,7 +137,7 @@ export default async function EquipmentPage({
         <Card className="mb-6">
           <h2 className="mb-3 font-semibold">{editing ? "Edit item" : "Add an item"}</h2>
           <form action={save} className="space-y-3" key={editing?.id ?? "new"}>
-            <ItemFields item={editing} />
+            <ItemFields item={editing} locations={locations} />
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" pendingLabel="Saving…">{editing ? "Save changes" : "Add item"}</Button>
               {editing && <Link href="/equipment" className="text-sm text-blue-700 underline">Cancel</Link>}
@@ -162,6 +169,7 @@ export default async function EquipmentPage({
               <tr>
                 <th className="px-3 py-2 text-right font-medium">Qty</th>
                 <th className="px-3 py-2 font-medium">Description</th>
+                <th className="px-3 py-2 font-medium">Location</th>
                 <th className="whitespace-nowrap px-3 py-2 font-medium">Expires</th>
                 <th className="whitespace-nowrap px-3 py-2 font-medium">Last checked</th>
                 {canManage && <th className="px-3 py-2"><span className="sr-only">Actions</span></th>}
@@ -174,6 +182,7 @@ export default async function EquipmentPage({
                   <tr key={item.id} className={`border-b border-slate-200 last:border-0 ${item.id === editing?.id ? "bg-blue-50" : ""}`}>
                     <td className="px-3 py-2 text-right tabular-nums">{item.quantity}</td>
                     <td className="min-w-[12rem] px-3 py-2">{item.description}</td>
+                    <td className="min-w-[8rem] px-3 py-2">{item.location ?? <span className="text-slate-400">—</span>}</td>
                     <td className="whitespace-nowrap px-3 py-2">
                       {item.expiration_date ? showDate(item.expiration_date) : <span className="text-slate-400">—</span>}
                       {status && (
