@@ -14,7 +14,7 @@ export function ChatSidebar({ conversations }: { conversations: Conversation[] }
       className={`${inThread ? "hidden md:flex" : "flex"} min-h-0 flex-col border-slate-200 bg-white md:border-r`}
     >
       <div className="border-b border-slate-200 px-4 py-4">
-        <DashboardLink className="mb-1" />
+        <DashboardLink className="mb-3" />
         <h1 className="text-xl font-semibold">Team Chat</h1>
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto">

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { DashboardLink } from "@/components/BackToDashboard";
 import { Button, Card, ErrorMessage, Field, SuccessMessage } from "@/components/ui";
 import { formatDate } from "@/lib/dates";
 import { text } from "@/lib/forms";
@@ -53,11 +53,7 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
     <main className="min-h-screen bg-slate-100 px-4 py-8">
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
-          {isMember && (
-            <Link href="/" className="mb-2 inline-block text-sm text-blue-700 underline">
-              ← Dashboard
-            </Link>
-          )}
+          {isMember && <DashboardLink className="mb-4" />}
           <h1 className="text-2xl font-semibold">Sunday Greeters</h1>
           <p className="mt-1 text-slate-700">
             Help welcome everyone on Sunday morning. Pick a Sunday, choose the 8:30 service, the 11:00 service or
