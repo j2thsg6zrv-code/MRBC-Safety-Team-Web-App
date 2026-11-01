@@ -81,7 +81,7 @@ async function changePassword(formData: FormData) {
 export default async function ProfilePage({ searchParams }: { searchParams: SearchParams }) {
   const user = await getCurrentUser();
   const supabase = await createClient();
-  const [{ data: profile }, { data: quals }, { data: allQuals }, { data: certs }, { data: outside }] = await Promise.all([
+  const [{ data: profile }, { data: quals }, { data: allQuals }, { data: certs }, { data: outside }, { data: pushKey }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).single(),
     supabase
       .from("member_qualifications")
@@ -99,7 +99,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
       .select("id, name, issued_by, earned_on, expires_on")
       .eq("profile_id", user.id)
       .order("name"),
+    supabase.rpc("push_public_key"),
   ]);
+  // Until an admin turns phone notifications on once, members can't use them,
+  // so don't show them a switch that only gives an error.
+  const pushReady = user.isAdmin || !!pushKey;
 
   return (
     <>
@@ -186,10 +190,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Sear
               <Button type="submit" variant="secondary">Save message settings</Button>
             </form>
           </Card>
-          <Card>
-            <h2 className="mb-3 font-semibold">Phone notifications</h2>
-            <PushSetting />
-          </Card>
+          {pushReady && (
+            <Card>
+              <h2 className="mb-3 font-semibold">Phone notifications</h2>
+              <PushSetting />
+            </Card>
+          )}
           <Card>
             <h2 className="mb-3 font-semibold">Chat sound</h2>
             <ChatSoundSetting />

@@ -103,12 +103,13 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
           </div>
         </Card>
 
-        <Card>
-          <h2 className="mb-1 font-semibold">Group emails</h2>
-          <p className="mb-3 text-sm text-slate-600">
-            When a group signs up without an email, its thank-you and reminder go to its leader&apos;s email.
-          </p>
-          {canManage ? (
+        {/* Setting up group leaders is for people who manage events. */}
+        {canManage && (
+          <Card>
+            <h2 className="mb-1 font-semibold">Group emails</h2>
+            <p className="mb-3 text-sm text-slate-600">
+              When a group signs up without an email, its thank-you and reminder go to its leader&apos;s email.
+            </p>
             <div className="space-y-4">
               {contacts.map((c) => (
                 <form key={c.id} action={saveContact} className="grid gap-3 sm:grid-cols-3">
@@ -127,19 +128,8 @@ export default async function GreeterSchedulePage({ searchParams }: { searchPara
                 </div>
               </form>
             </div>
-          ) : contacts.length === 0 ? (
-            <p className="text-sm text-slate-500">None yet.</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {contacts.map((c) => (
-                <li key={c.id}>
-                  <span className="font-medium">{c.name}</span>: {c.email ?? c.phone}
-                  {c.contact_name && <span className="text-slate-500"> ({c.contact_name})</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+          </Card>
+        )}
 
         {allSundays.map((sunday) => {
           const day = signups.filter((s) => s.sunday === sunday);
