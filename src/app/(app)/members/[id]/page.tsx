@@ -77,12 +77,42 @@ export default async function MemberPage({
           <Card>
             <h2 className="mb-2 font-semibold">Contact</h2>
             <dl className="space-y-1 text-sm">
-              <div><dt className="inline text-slate-500">Email: </dt><dd className="inline">{member.email}</dd></div>
-              <div><dt className="inline text-slate-500">Phone: </dt><dd className="inline">{member.phone ?? "Not given"}</dd></div>
+              <div>
+                <dt className="inline text-slate-500">Email: </dt>
+                <dd className="inline">
+                  <a href={`mailto:${member.email}`} className="break-all text-blue-700 underline">{member.email}</a>
+                </dd>
+              </div>
+              <div>
+                <dt className="inline text-slate-500">Phone: </dt>
+                <dd className="inline">
+                  {member.phone ? (
+                    <>
+                      <a href={`tel:${member.phone}`} className="text-blue-700 underline">{member.phone}</a>
+                      {" · "}
+                      <a href={`sms:${member.phone}`} className="text-blue-700 underline">Text</a>
+                    </>
+                  ) : (
+                    "Not given"
+                  )}
+                </dd>
+              </div>
               <div>
                 <dt className="inline text-slate-500">Emergency contact: </dt>
                 <dd className="inline">
-                  {[member.emergency_contact_name, member.emergency_contact_phone].filter(Boolean).join(" · ") || "Not given"}
+                  {member.emergency_contact_name || member.emergency_contact_phone ? (
+                    <>
+                      {member.emergency_contact_name}
+                      {member.emergency_contact_name && member.emergency_contact_phone && " · "}
+                      {member.emergency_contact_phone && (
+                        <a href={`tel:${member.emergency_contact_phone}`} className="text-blue-700 underline">
+                          {member.emergency_contact_phone}
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    "Not given"
+                  )}
                 </dd>
               </div>
             </dl>
