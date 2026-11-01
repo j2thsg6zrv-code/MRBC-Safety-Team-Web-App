@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button, Card, ErrorMessage, Field, SuccessMessage } from "@/components/ui";
 import { formatDate } from "@/lib/dates";
@@ -7,8 +8,8 @@ import { SERVICES, upcomingSundays } from "@/lib/greeters";
 import { createClient } from "@/lib/supabase/server";
 
 // Public page: no login needed. It reads and writes only through the
-// greeter_schedule and greeter_sign_up database functions, and links nowhere
-// else in the app.
+// greeter_schedule and greeter_sign_up database functions. The only link into
+// the app is "← Dashboard", shown only to a signed-in, approved team member.
 
 export const metadata: Metadata = {
   title: "Greeter Sign-Up",
@@ -42,6 +43,7 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
     from_date: sundays[0],
     to_date: sundays[sundays.length - 1],
   });
+  const isMember = await isActiveTeamMember(supabase);
   const rows = (data ?? []) as { sunday: string; name: string; first_service: boolean; second_service: boolean }[];
 
   const namesFor = (sunday: string, service: (typeof SERVICES)[number]["key"]) =>
@@ -51,6 +53,11 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
     <main className="min-h-screen bg-slate-100 px-4 py-8">
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
+          {isMember && (
+            <Link href="/" className="mb-2 inline-block text-sm text-blue-700 underline">
+              ← Dashboard
+            </Link>
+          )}
           <h1 className="text-2xl font-semibold">Sunday Greeters</h1>
           <p className="mt-1 text-slate-700">
             Help welcome everyone on Sunday morning. Pick a Sunday, choose the 8:30 service, the 11:00 service or
@@ -138,4 +145,13 @@ export default async function GreetersPage({ searchParams }: { searchParams: Sea
       </div>
     </main>
   );
+}
+
+// True only for someone signed in whose account an admin has approved.
+async function isActiveTeamMember(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data } = await supabase.auth.getClaims();
+  const id = data?.claims?.sub;
+  if (!id) return false;
+  const { data: profile } = await supabase.from("profiles").select("active").eq("id", id).maybeSingle();
+  return !!profile?.active;
 }
