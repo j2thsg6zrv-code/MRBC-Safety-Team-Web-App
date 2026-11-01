@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { DashboardLink } from "./BackToDashboard";
 import { chatWhen, TEAM, type Conversation } from "@/lib/chat";
 
 export function ChatSidebar({ conversations }: { conversations: Conversation[] }) {
@@ -12,7 +13,10 @@ export function ChatSidebar({ conversations }: { conversations: Conversation[] }
     <aside
       className={`${inThread ? "hidden md:flex" : "flex"} min-h-0 flex-col border-slate-200 bg-white md:border-r`}
     >
-      <h1 className="border-b border-slate-200 px-4 py-4 text-xl font-semibold">Team Chat</h1>
+      <div className="border-b border-slate-200 px-4 py-4">
+        <DashboardLink className="mb-1" />
+        <h1 className="text-xl font-semibold">Team Chat</h1>
+      </div>
       <ul className="min-h-0 flex-1 overflow-y-auto">
         {conversations.map((c, i) => {
           const active = pathname === `/chat/${c.id}`;
