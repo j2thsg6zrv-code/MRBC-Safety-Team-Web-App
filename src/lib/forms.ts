@@ -25,5 +25,5 @@ export function finish(path: string, error: { message: string } | null, saved = 
     }
   }
   const params = new URLSearchParams(error ? { error: error.message } : { saved });
-  redirect(`${path}?${params}`);
+  redirect(`${path}${path.includes("?") ? "&" : "?"}${params}`);
 }
