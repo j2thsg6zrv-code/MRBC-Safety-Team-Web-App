@@ -109,7 +109,7 @@ export default async function DashboardPage({
     seesWatchList
       ? supabase.from("watch_list").select("*").eq("archived", false).order("status").order("created_at", { ascending: false })
       : Promise.resolve({ data: [] as WatchListEntry[] }),
-    user.can("view_incidents") || user.can("manage_incidents")
+    user.can("view_incidents")
       ? supabase.from("incident_reports").select("id", { count: "exact", head: true }).eq("status", "open")
       : Promise.resolve({ count: null }),
     selected
