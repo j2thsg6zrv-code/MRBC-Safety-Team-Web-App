@@ -20,7 +20,8 @@ export default async function ChatLayout({ children }: { children: ReactNode }) 
       id,
       name,
       lastAt: o?.last_at ?? null,
-      lastBody: o?.last_body ?? null,
+      // A picture sent without words has an empty body.
+      lastBody: o ? o.last_body || "📷 Picture" : null,
       lastFromMe: o?.last_sender === user.id,
       unread: o?.unread ?? 0,
     };

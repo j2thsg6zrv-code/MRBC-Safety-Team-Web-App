@@ -8,7 +8,7 @@ import { playChatSound, unlockChatSound } from "@/lib/chat-sound";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * Listens for new and deleted chat messages and refreshes the page when one
+ * Listens for new and deleted chat messages (and reactions) and refreshes the page when one
  * arrives. A message in the open conversation is marked read straight away.
  * Mounted on every page so a new message from someone else plays the alert
  * sound wherever you are in the app.
@@ -38,6 +38,12 @@ export function ChatLive({ me }: { me: string }) {
           else router.refresh();
         })
         .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_messages" }, () => router.refresh())
+        // Reactions only show inside a conversation, so only refresh there.
+        .on("postgres_changes", { event: "*", schema: "public", table: "chat_reactions" }, (payload) => {
+          const reaction = (payload.eventType === "DELETE" ? payload.old : payload.new) as { profile_id?: string };
+          if (reaction.profile_id === me) return; // reacting already refreshed the page
+          if (open.current) router.refresh();
+        })
         .subscribe();
     });
 
